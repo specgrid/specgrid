@@ -6,27 +6,43 @@ import numpy as np
 import sqlite3
 import numpy as np
 import specgrid
-
+from glob import glob
+from pyspec import oned
 try:
     import sqlparse
     sqlparse_available = True
 except ImportError:
     sqlparse_available = False
     
-def read_grid_config(fname='~/.specgrid/specgrid.ini'):
+    
+metric_dict = {'lin':lambda x:x,
+          'log10': np.log10}
+
+inverse_metric_dict = {'lin':lambda x:x,
+                  'log10':lambda x:10**x}
+
+def read_general_config(conf_path='~/.specgrid/specgrid.ini', general_dict={}):
+    conf_path = os.path.expanduser(conf_path)
+    if not os.path.exists(conf_path):
+        raise IOError('Config directory does not exist at %s' % conf_path)
+
+    conf = ConfigParser.ConfigParser()
+    conf.read(conf_path)
+    
+    for item, value in conf.items('general'):
+        if item == 'warn_thresh':
+            value = int(value) * 1024**2
+        general_dict[item] = value
+    return general_dict
+
+def read_grid_config(fname, grid_dict={}):
     fname = os.path.expanduser(fname)
     if not os.path.exists(fname):
-        raise IOError('Config file does not exist at %s' % fname)
+        raise IOError('No file found at %s' % fname)
+    
     conf = ConfigParser.ConfigParser()
     conf.read(fname)
-    grid_names = conf.sections()
-    grid_names.remove('general')
-    
-    #print "Found the following grids:\n %s" % ('\n'.join(grid_names))
-    
-    grid_dict = {}
-    
-    for grid in grid_names:
+    for grid in conf.sections():
         grid_dict[grid] = {}
         for item, value in conf.items(grid):
             if item == 'datatype':
@@ -44,16 +60,24 @@ def read_grid_config(fname='~/.specgrid/specgrid.ini'):
             
             elif item.startswith('default_'):
                 #item = item.replace('default_', '')
-                value = np.float64(value)    
+                try:
+                    value = np.float64(value)
+                except ValueError:
+                    value = value
             grid_dict[grid][item] = value
+    return grid_dict
+
+def read_standard_grid_configs(conf_path='~/.specgrid/', grid_dict={}):
+    conf_path = os.path.expanduser(conf_path)
+    if not os.path.exists(conf_path):
+        raise IOError('Config directory does not exist at %s' % conf_path)
+    conf = ConfigParser.ConfigParser()
+    for fname in glob(os.path.join(conf_path,'*.ini')):
+        if 'specgrid.ini' in fname: continue
+        print fname
+        grid_dict = read_grid_config(fname, grid_dict)
     
-    general_dict = {}
-    
-    for item, value in conf.items('general'):
-        if item == 'warn_thresh':
-            value = int(value) * 1024**2
-        general_dict[item] = value
-    return grid_dict, general_dict
+    return grid_dict
 
 
 def read_grid(grid_name, **kwargs):
@@ -70,16 +94,28 @@ def read_grid(grid_name, **kwargs):
     
     warn_size: bool
         Warn if requested dataset is above warning threshold. Interactive keypress required
-        Threshold can be set in specgrid.ini"""
+        Threshold can be set in specgrid.ini
+        
+    ignore: tuple
+        ignore the parameter in the select and grid.
+        
+    normalizer: normalize object
+        normalizer object"""
     
     #Readint grid configuration
     
-    warn_size = kwargs.get('warn_size', True)
-    grid_dict = kwargs.get('grid_dict', None)
-    general_dict = kwargs.get('general_dict', None)
+    warn_size = kwargs.pop('warn_size', True)
+    grid_dict = kwargs.pop('grid_dict', None)
+    general_dict = kwargs.pop('general_dict', None)
+    normalizer = kwargs.get('normalizer', None)
+    convolver = kwargs.get('convolver', None)
+    ignore = kwargs.pop('ignore', ())
     
-    if grid_dict == None or general_dict == None:
-        grid_dict, general_dict = read_grid_config()
+    if general_dict == None:
+        general_dict = read_general_config()
+    if grid_dict == None:
+        grid_dict = read_standard_grid_configs()
+    
     
     #Reading configuration dictionary for specific grid
     config_dict = grid_dict[grid_name]
@@ -95,12 +131,24 @@ def read_grid(grid_name, **kwargs):
     #extracting the parameters for grid (using defaults if none are given)
     for param_name in param_names:
         
+        default_param_value = config_dict.get('default_' + param_name, None)
+        
+        if param_name in ignore:
+            continue
+        
+        
+        
+        
         if param_name in kwargs.keys():
             requested_param_names.append(param_name)
             param_value = kwargs[param_name]
+
+        elif default_param_value == None:
+            requested_param_names.append(param_name)
+            param_value = None
         else:
-            param_value = config_dict.get('default_' + param_name, None)
-        print param_name, param_value
+            param_value = default_param_value
+            
         param_values.append(param_value)
         
     #building sqlite query
@@ -111,10 +159,23 @@ def read_grid(grid_name, **kwargs):
     
     for param_name, param_value in zip(param_names, param_values):
         #specifically requesting a None selection on a parameter
-        
+                
         if param_value == None:
             continue
         
+        if param_name in ignore:
+            continue
+
+        
+        if isinstance(param_value, basestring):
+            grid_query_conditions.append("%s='%s'" % (param_name, param_value))
+            try:
+                requested_param_names.remove(param_name)
+            except ValueError:
+                pass
+            
+            continue
+            
         param_len = None
         try:
             param_len = len(param_value)
@@ -127,6 +188,7 @@ def read_grid(grid_name, **kwargs):
                 requested_param_names.remove(param_name)
         #detected range selection
         elif param_len == 2:
+            
             if param_value.count(None) == 0:
                 grid_query_conditions.append('%s between %s and %s' % (param_name, param_value[0], param_value[1]))
                 
@@ -135,8 +197,8 @@ def read_grid(grid_name, **kwargs):
                     grid_query_conditions.append('%s <= %s' % (param_name, param_value[1]))
                 elif param_value[1] == None:
                     grid_query_conditions.append('%s >= %s' % (param_name, param_value[0]))
-                    
-            if param_value.count(None) > 1:
+            
+            elif param_value.count(None) > 1:
                 raise ValueError('Range tuple can only have one \'None\' value')
             
             
@@ -192,89 +254,90 @@ def read_grid(grid_name, **kwargs):
             return
     
     
-    fluxes = load_spectra(config_dict, fnames, **kwargs)
+    #reading metrics
+    metric = {}
+    inverse_metric = {}
+    for key, value in config_dict.items():
+        if key.startswith('metric_'):
+            metric[key[7:]] = metric_dict[value]
+            inverse_metric[key[7:]] = inverse_metric_dict[value]
+        
     
-    return specgrid.specgrid(requested_params, fluxes, None, None)
+    wave = np.fromfile(config_dict['datadir'] + 'wave.npmap')
+    fluxes = load_spectra(config_dict, fnames, wave, **kwargs)
+    
+    
+    return specgrid.specgrid(requested_params, fluxes, wave,
+                             requested_param_names, normalizer=normalizer, convolver=convolver,
+                             metric=metric, inverse_metric=inverse_metric)
 
-def load_spectra(config_dict, fnames, **kwargs):
+def load_spectra(config_dict, fnames, wave, **kwargs):
     
+    normalizer = kwargs.get('normalizer', None)
+    convolver = kwargs.get('convolver', None)
+    
+    if normalizer != None:
+        normalizer.wave = wave
+        normalizer.calculate_idx()
+    
+    if convolver != None:
+        convolver.wave = wave
+
     if config_dict['datatype'] == np.float64:
         pixel_per_spectrum = config_dict['specsize'] / 8
     else:
         raise ValueError("Datatype %s not implemented for spectra" % config_dict['datatype'])
 
     #initializing spectral grid
-    fluxes = np.zeros((len(fnames), pixel_per_spectrum))
+    fluxes = np.empty((len(fnames), pixel_per_spectrum))
     
     
     for i, fname in enumerate(fnames):
-        fluxes[i] = np.fromfile(config_dict['datadir'] + fname, dtype = config_dict['datatype'])
+        flux = np.fromfile(config_dict['datadir'] + fname, dtype = config_dict['datatype'])
+        
+        if convolver != None:
+            flux = convolver.convolve_grid(flux)
+        if normalizer != None:
+            flux = normalizer.normalize_grid(flux)
+        
+        
+            
+        fluxes[i] = flux
     return fluxes
     
     
-    
-    ###### DELETE FROM HEREON DOWN
-    #reading config
-    waveFName = config.get('wave', 'wave')
-    specDType = config.get('structure', 'datatype')
-    specSize = config.getint('structure', 'specsize')
-    specsize = config.getint('wave', 'islog')
-    R = config.getfloat('params', 'r')
-    
-    if kwargs.has_key('smoothres'):
-        if kwargs['smoothres']>R:
-            raise ValueError('requested resolution (R=%f) higher than'
-                             'models intrinsic resolution (R=%f)' % (kwargs['smoothres'], R))
-    #Reading wave solution
-    wave = np.fromfile(os.path.join(specDataDir, waveFName))
-    
-    if kwargs.has_key('wave'):
-        gridSize = len(fnames) * len(kwargs['wave'].tostring()) / 1024**2
-    else:
-        gridSize = len(fnames) * specSize / 1024**2
-    print "Processing %d spectra" % len(fnames)
-    
-    print "Processing %.3f MB in to Memory." % gridSize
-    
-    specs = []
 
-    startTime = time.time()
-    
-    for i, specFName in enumerate(fnames):
-        flux = np.fromfile(os.path.join(specDataDir, 'data', specFName))
-        spec = oned.onedspec(wave, flux, mode='waveflux')
-        if i%100 == 0:
-            print "@%d took %.2f s" % (i, time.time() - startTime)
-            startTime = time.time()
+class NormRange(object):
+    def __init__(self, norm_range, wave=None):
+        self.norm_range = norm_range
+        self.wave = wave
+        if self.wave != None:
+            self.calculate_idx()
         
-            
-        if kwargs.has_key('normrange'):
-            normrange = kwargs['normrange']
-            normFac = np.mean(spec[slice(*normrange)].flux)
-            spec.flux /= normFac
-            
-            
-            
-        if kwargs.has_key('smoothres') or kwargs.has_key('smoothrot'):
-            if kwargs.has_key('wave'):
-                tmpSpec = spec[float(kwargs['wave'].min()):float(kwargs['wave'].max())]
-                logDelta, logSpec = tmpSpec.interpolate_log()
-            else:
-                logDelta, logSpec = spec.interpolate_log()
-            if kwargs.has_key('smoothres'):
-                logSpec = logSpec.convolve_profile(kwargs['smoothres'], smallDelta=logDelta)
-            if kwargs.has_key('smoothrot'):
-                logSpec = logSpec.convolve_rotation(kwargs['smoothrot'], smallDelta=logDelta)
-            spec = logSpec
-            
-        if kwargs.has_key('wave'):
-            spec = spec.interpolate(kwargs['wave'])
-        else:
-            spec = spec.interpolate(wave)
-
-            
-        specs.append(spec.flux)
-    if kwargs.has_key('wave'):
-        return kwargs['wave'], np.array(specs)
-    else:
-        return wave, np.array(specs)
+        
+        
+    def calculate_idx(self):
+        self.min_idx = self.wave.searchsorted(self.norm_range[0])
+        self.max_idx = self.wave.searchsorted(self.norm_range[1])
+    
+    
+    def normalize_grid(self, flux):
+        norm_factor = np.mean(flux[self.min_idx:self.max_idx])
+        return flux / norm_factor
+    
+    def normalize_spectrum(self, spectrum):
+        norm_factor = spectrum[slice(*self.norm_range)].flux.mean()
+        return spectrum / norm_factor
+    
+class ConvolveResolution(object):
+    def __init__(self, requested_resolution, initial_resolution=np.inf, wave=None):
+        self.requested_resolution = requested_resolution
+        self.initial_resolution = initial_resolution
+    
+    def set_wave(self, wave):
+        self.wave = wave
+    
+    def convolve_grid(self, flux):
+        tmp_spec = oned.onedspec(self.wave, flux, mode='waveflux')
+        convolved_spec = tmp_spec.convolve_profile(self.requested_resolution, self.initial_resolution)
+        return convolved_spec.flux
