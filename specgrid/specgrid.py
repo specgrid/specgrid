@@ -1,7 +1,12 @@
 #specgrid class
 from scipy import interpolate
 import numpy as np
-
+try:
+    from pyspec import oned
+    pyspec_available = True
+except ImportError:
+    pyspec_available = False
+    
 class specgrid(object):
     def __init__(self, params, fluxes, wave, param_names,
                  interpolator = interpolate.LinearNDInterpolator,
@@ -46,6 +51,15 @@ class specgrid(object):
         plugin_object = plugin_class(self.wave, normalizer=self.normalizer, **kwargs)
         self.plugins[plugin_object.param_name] = plugin_object
         self.all_param_name_set.add(plugin_object.param_name)
+    
+    
+    def interpolate_spectrum(self, **kwargs):
+        if pyspec_available:
+            flux = self.interpolate(**kwargs)
+            wave = self.wave
+            return oned.onedspec(wave, flux, mode='waveflux')
+        else:
+            raise NotImplementedError('PySpec is not available')
         
     def interpolate(self, **kwargs):
         #checking if the kwargs are in the param_names
