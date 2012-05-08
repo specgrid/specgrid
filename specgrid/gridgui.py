@@ -20,6 +20,7 @@ class specgrid_mainwindow(QtGui.QMainWindow):
         self.spec_plot = self.ax.plot([])[0]
         self.specgrids = []
         self.param_sliders = []
+        
         self.autoscale = True
         self.off_grid_text = self.ax.text(0.5, 0.5,'OFF GRID',
                                 horizontalalignment='center',
@@ -27,6 +28,8 @@ class specgrid_mainwindow(QtGui.QMainWindow):
                                 transform = self.ax.transAxes,
                                 color='red',
                                 fontsize=40)
+        self.samplespec_plot, = self.ax.plot([])
+        
     def setup_ui(self, parent):
         QtGui.QMainWindow.__init__(self, parent)
         self.main_frame = QtGui.QWidget(self)
@@ -49,7 +52,17 @@ class specgrid_mainwindow(QtGui.QMainWindow):
 
     def redraw(self):
         self.mplwidget.canvas.draw()
-    
+        
+    def clear(self):
+        self.ax.cla()
+        self.spec_plot, = self.ax.plot(self.spec_plot.get_xdata(), self.spec_plot.get_ydata())
+        self.redraw()
+        
+    def add_sample_spec(self, spec):
+        self.samplespec_plot.set_data(spec.wave, spec.flux)
+        self.redraw()
+        
+        
     def add_specgrid(self, specgrid):
         self.specgrids.append(specgrid)
         self.current_specgrid = specgrid
