@@ -8,6 +8,7 @@ import numpy as np
 import specgrid
 from glob import glob
 from pyspec import oned
+
 try:
     import sqlparse
     sqlparse_available = True
@@ -275,10 +276,11 @@ def load_spectra(config_dict, fnames, wave, **kwargs):
     
     normalizer = kwargs.get('normalizer', None)
     convolver = kwargs.get('convolver', None)
+    interpolate = kwargs.get('interpolate', None)
     
     if normalizer != None:
         normalizer.wave = wave
-        normalizer.calculate_idx()
+        
     
     if convolver != None:
         convolver.wave = wave
@@ -295,12 +297,13 @@ def load_spectra(config_dict, fnames, wave, **kwargs):
     for i, fname in enumerate(fnames):
         flux = np.fromfile(config_dict['datadir'] + fname, dtype = config_dict['datatype'])
         
-        if convolver != None:
+        if convolver is not None:
             flux = convolver.convolve_grid(flux)
-        if normalizer != None:
+        if normalizer is not None:
             flux = normalizer.normalize_grid(flux)
         
-        
+        if interpolate is not None:
+            np.interp
             
         fluxes[i] = flux
     return fluxes
@@ -310,12 +313,18 @@ def load_spectra(config_dict, fnames, wave, **kwargs):
 class NormRange(object):
     def __init__(self, norm_range, wave=None):
         self.norm_range = norm_range
-        self.wave = wave
-        if self.wave != None:
+        self.wave = property(_set_wave, _get_wave)
+        self._wave = wave
+        if self.wave is not None:
             self.calculate_idx()
         
+    def _set_wave(self, wave):
+        self._wave = wave
+        self.calculate_idx()
         
-        
+    def _get_wave(self):
+        return self._wave
+     
     def calculate_idx(self):
         self.min_idx = self.wave.searchsorted(self.norm_range[0])
         self.max_idx = self.wave.searchsorted(self.norm_range[1])
@@ -328,6 +337,34 @@ class NormRange(object):
     def normalize_spectrum(self, spectrum):
         norm_factor = spectrum[slice(*self.norm_range)].flux.mean()
         return spectrum / norm_factor
+    
+class NormFit(object):
+    def __init__(self,
+                 low_rej=2.0,
+                 high_rej=3.0,
+                 function='legendre',
+                 maxiter=3, order=5,
+                 mode='normal',
+                 mask=None,
+                 wave=None):
+        self.low_rej = low_rej
+        self.high_rej = high_rej
+        self.function = function
+        self.maxiter = maxiter
+        self.order = order
+        self.mode = mode
+        self.wave = wave
+        
+    def normalize_grid(self, flux):
+        curspec = oned.onedspec(self.wave, flux, mode='waveflux')
+        cont = oned.continuum2(curspec,
+                        low_rej=self.low_rej,
+                        high_rej=self.high_rej,
+                        function=self.function,
+                        maxiter=self.maxiter,
+                        order=self.order,
+                        mode=self.mode)
+        return (curspec / cont).flux
     
 class ConvolveResolution(object):
     def __init__(self, requested_resolution, initial_resolution=np.inf, wave=None):
