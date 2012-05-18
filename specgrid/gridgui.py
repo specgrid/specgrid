@@ -1,7 +1,4 @@
 #implements the Graphical user interface for
-
-from qt_gui.mainwindow import Ui_MainWindow
-from qt_gui.load_grid import Ui_Form
 from mplwidget import MplWidget
 from PyQt4 import QtCore, QtGui
 import numpy as np
