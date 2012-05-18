@@ -65,6 +65,10 @@ def read_grid_config(fname, grid_dict={}):
                     value = np.float64(value)
                 except ValueError:
                     value = value
+            
+            elif item.startswith('ignore_'):
+                value = (value.lower().strip() in ('true', '1'))
+                
             grid_dict[grid][item] = value
     return grid_dict
 
@@ -120,6 +124,7 @@ def read_grid(grid_name, **kwargs):
     
     #Reading configuration dictionary for specific grid
     config_dict = grid_dict[grid_name]
+    defaults = {keyword.replace('default_', '') : config_dict[keyword] for keyword in config_dict if keyword.startswith('default')}
     table_name = config_dict['table']
     conn = sqlite3.connect(config_dict['indexdb'])
     
@@ -128,84 +133,64 @@ def read_grid(grid_name, **kwargs):
     param_names.remove('id')
     param_names.remove('fname')
     param_values = []
-    requested_param_names = []
-    #extracting the parameters for grid (using defaults if none are given)
-    for param_name in param_names:
-        
-        default_param_value = config_dict.get('default_' + param_name, None)
-        
-        if param_name in ignore:
-            continue
-        
-        
-        
-        
-        if param_name in kwargs.keys():
-            requested_param_names.append(param_name)
-            param_value = kwargs[param_name]
-
-        elif default_param_value == None:
-            requested_param_names.append(param_name)
-            param_value = None
+    
+    param_dict = {}
+    
+    for param in param_names:
+        #first check if param_exists
+        if param in ignore:
+            param_dict[param] = 'ignore'
+        elif param in kwargs:
+            param_dict[param] = kwargs[param]
+        elif param in defaults:
+            param_dict[param] = defaults[param]
         else:
-            param_value = default_param_value
-            
-        param_values.append(param_value)
+            print 'ignoring param %s' % param
         
-    #building sqlite query
+    
+  
     
     grid_query_conditions = []
 
     #now add the limitations
     
-    for param_name, param_value in zip(param_names, param_values):
+    for param_name, param_value in param_dict.items():
         #specifically requesting a None selection on a parameter
                 
-        if param_value == None:
+        if param_value == 'query':
             continue
         
-        if param_name in ignore:
+        elif param_value == 'ignore':
             continue
-
         
         if isinstance(param_value, basestring):
             grid_query_conditions.append("%s='%s'" % (param_name, param_value))
-            try:
-                requested_param_names.remove(param_name)
-            except ValueError:
-                pass
             
-            continue
             
-        param_len = None
-        try:
-            param_len = len(param_value)
-        except TypeError:
-            pass
-        #detected value selection
-        if param_len == None:
+        elif not np.iterable(param_value):
             grid_query_conditions.append('%s=%s' % (param_name, param_value))
-            if param_name in requested_param_names:
-                requested_param_names.remove(param_name)
-        #detected range selection
-        elif param_len == 2:
+        
+        elif len(param_value) == 2:
             
             if param_value.count(None) == 0:
                 grid_query_conditions.append('%s between %s and %s' % (param_name, param_value[0], param_value[1]))
+                param_dict[param_name] = 'query'
                 
             elif param_value.count(None) == 1:
                 if param_value[0] == None:
                     grid_query_conditions.append('%s <= %s' % (param_name, param_value[1]))
                 elif param_value[1] == None:
                     grid_query_conditions.append('%s >= %s' % (param_name, param_value[0]))
+                
+                param_dict[param_name] = 'query'
             
-            elif param_value.count(None) > 1:
-                raise ValueError('Range tuple can only have one \'None\' value')
+            elif param_value.count(None) == 2:
+                param_dict[param_name] = 'query'
             
             
         else: raise ValueError('params only support tuple or single numbers')
 
-
+    requested_param_names = [param_name for param_name in param_dict if param_dict[param_name]=='query']
     grid_query = 'select %s, fname from %s' % (','.join(requested_param_names), table_name)
     
     if len(grid_query_conditions) > 0:
@@ -220,7 +205,6 @@ def read_grid(grid_name, **kwargs):
     else:
         print grid_query
     print '-'*40 + '\n'
-    
     raw_data = conn.execute(grid_query).fetchall()
     requested_params = np.array(zip(*zip(*raw_data)[:-1]))
 
