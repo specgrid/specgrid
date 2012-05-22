@@ -297,7 +297,7 @@ def load_spectra(config_dict, fnames, wave, **kwargs):
 class NormRange(object):
     def __init__(self, norm_range, wave=None):
         self.norm_range = norm_range
-        self.wave = property(_set_wave, _get_wave)
+        
         self._wave = wave
         if self.wave is not None:
             self.calculate_idx()
@@ -308,7 +308,9 @@ class NormRange(object):
         
     def _get_wave(self):
         return self._wave
-     
+    
+    self.wave = property(_set_wave, _get_wave)
+    
     def calculate_idx(self):
         self.min_idx = self.wave.searchsorted(self.norm_range[0])
         self.max_idx = self.wave.searchsorted(self.norm_range[1])
