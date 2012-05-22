@@ -2,13 +2,15 @@
 
 from scipy import ndimage
 import numpy as np
+import os
 try:
     import pysynphot
     pysynphot_available = True
 except ImportError:
     pysynphot_available = False
 
-cardelli_data = '/Users/wkerzend/scripts/python/specgrid/specgrid/data/reddening/milkyway_rv3.1.dat'
+cardelli_data = os.path.join(os.path.dirname(__file__), 'milkyway_rv3.1.dat')
+
 class GaussConvolvePlugin(object):
     def __init__(self, wave, **kwargs):
         self.wave = wave
