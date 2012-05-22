@@ -295,16 +295,11 @@ def load_spectra(config_dict, fnames, wave, **kwargs):
     
 
 class NormRange(object):
-    def __init__(self, norm_range, wave=None):
-        self.norm_range = norm_range
-        
-        self._wave = wave
-        if self.wave is not None:
-            self.calculate_idx()
         
     def _set_wave(self, wave):
         self._wave = wave
-        self.calculate_idx()
+        if self._wave is not None:
+            self.calculate_idx()
         
     def _get_wave(self):
         return self._wave
@@ -315,6 +310,12 @@ class NormRange(object):
         self.min_idx = self.wave.searchsorted(self.norm_range[0])
         self.max_idx = self.wave.searchsorted(self.norm_range[1])
     
+
+    def __init__(self, norm_range, wave=None):
+        self.norm_range = norm_range
+        
+        self.wave = wave
+
     
     def normalize_grid(self, flux):
         norm_factor = np.mean(flux[self.min_idx:self.max_idx])
