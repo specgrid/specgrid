@@ -304,7 +304,7 @@ class NormRange(object):
     def _get_wave(self):
         return self._wave
     
-    wave = property(_set_wave, _get_wave)
+    wave = property(_get_wave, _set_wave)
     
     def calculate_idx(self):
         self.min_idx = self.wave.searchsorted(self.norm_range[0])
