@@ -314,7 +314,10 @@ class NormRange(object):
     def __init__(self, norm_range, wave=None):
         self.norm_range = norm_range
         
-        self.wave = wave
+        if wave is not None:
+            self._wave = wave
+            self.calculate_idx()    
+        
 
     
     def normalize_grid(self, flux):
