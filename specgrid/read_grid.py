@@ -269,7 +269,7 @@ def load_spectra(config_dict, fnames, wave, **kwargs):
         
     
     if convolver != None:
-        convolver.wave = wave
+        convolver.set_wave(wave)
 
     if config_dict['datatype'] == np.float64:
         pixel_per_spectrum = config_dict['specsize'] / 8
@@ -378,6 +378,7 @@ class ConvolveGauss(object):
     def __init__(self, sigma, wave=None):
         self.sigma = sigma
         if wave is not None: self.set_wave(wave)
+
     def set_wave(self, wave):
         self.wave = wave
         self.world2pix = 1/float(abs(wave[1]-wave[0]))
