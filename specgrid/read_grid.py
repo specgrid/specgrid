@@ -5,6 +5,7 @@ import ConfigParser
 import numpy as np
 import sqlite3
 import numpy as np
+import sys
 import specgrid
 from glob import glob
 from pyspec import oned
@@ -277,8 +278,10 @@ def load_spectra(config_dict, fnames, wave, **kwargs):
     #initializing spectral grid
     fluxes = np.empty((len(fnames), pixel_per_spectrum))
     
-    
+    print ("Loading spectra")
     for i, fname in enumerate(fnames):
+        sys.stdout.write('\rat %.2f \%' % float(i)/float(len(fnames)))
+        sys.stdout.flush()
         flux = np.fromfile(config_dict['datadir'] + fname, dtype = config_dict['datatype'])
         
         if convolver is not None:
