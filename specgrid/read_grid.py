@@ -6,7 +6,7 @@ import numpy as np
 import sqlite3
 import numpy as np
 import sys
-from scipy import ndimage
+from scipy import ndimage, interpolate
 import specgrid
 from glob import glob
 from pyspec import oned
@@ -270,8 +270,9 @@ def load_spectra(config_dict, fnames, wave, **kwargs):
     
     if convolver != None:
         convolver.set_wave(wave)
-
-    if config_dict['datatype'] == np.float64:
+    if interpolate is not None:
+        pixel_per_spectrum = len(interpolate)
+    elif config_dict['datatype'] == np.float64:
         pixel_per_spectrum = config_dict['specsize'] / 8
     else:
         raise ValueError("Datatype %s not implemented for spectra" % config_dict['datatype'])
@@ -281,7 +282,7 @@ def load_spectra(config_dict, fnames, wave, **kwargs):
     
     print ("Loading spectra")
     for i, fname in enumerate(fnames):
-        sys.stdout.write('\rat %d of %d  [%.2f %%]' % (i, len(fnames), float(i)/float(len(fnames))))
+        sys.stdout.write('\rat %d of %d  [%.2f %%]' % (i, len(fnames), 100.*float(i)/float(len(fnames))))
         sys.stdout.flush()
         flux = np.fromfile(config_dict['datadir'] + fname, dtype = config_dict['datatype'])
         
@@ -291,7 +292,8 @@ def load_spectra(config_dict, fnames, wave, **kwargs):
             flux = normalizer.normalize_grid(flux)
         
         if interpolate is not None:
-            np.interp
+            interpolator = interpolate.interp1d(wave, flux, bounds_error=False, fill_value=np.nan)
+            flux = interpolator(interpolate)
             
         fluxes[i] = flux
     return fluxes
@@ -382,8 +384,17 @@ class ConvolveGauss(object):
     def set_wave(self, wave):
         self.wave = wave
         self.world2pix = 1/float(abs(wave[1]-wave[0]))
+        self.pixsigma = self.sigma * self.world2pix
     def convolve_grid(self, flux):
 #        tmp_spec = oned.onedspec(self.wave, flux, mode='waveflux')
-        convolved_flux = ndimage.gaussian_filter1d(flux, self.sigma*self.world2pix)
+        convolved_flux = ndimage.gaussian_filter1d(flux, self.pixsigma)
 #        convolved_spec = tmp_spec.convolve_profile(self.requested_resolution, self.initial_resolution)
         return convolved_flux
+
+class MARCSConvolveProfile(ConvolveGauss):
+    def __init__(self, requested_resolution, initial_resolution=20000, wave=None):
+        self.requested_resolution = requested_resolution
+        self.resolution = np.sqrt(inital_resolution**-2 - requested_resolution**-2)**-1
+    def set_wave(self, wave):
+        self.wave = wave
+        self.pixsigma = marcs.wave[0]/self.resolution/(marcs.wave[1]-marcs.wave[0])
