@@ -141,7 +141,7 @@ def read_grid(grid_name, **kwargs):
             param_dict[param] = 'ignore'
         elif param in kwargs:
             param_dict[param] = kwargs[param]
-        elif param in defaults:
+        elif param in grid_dict:
             param_dict[param] = defaults[param]
         else:
             print 'ignoring param %s' % param
@@ -190,6 +190,7 @@ def read_grid(grid_name, **kwargs):
         else: raise ValueError('params only support tuple or single numbers')
 
     requested_param_names = [param_name for param_name in param_dict if param_dict[param_name]=='query']
+
     grid_query = 'select %s, fname from %s' % (','.join(requested_param_names), table_name)
     
     if len(grid_query_conditions) > 0:
