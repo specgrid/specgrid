@@ -60,7 +60,6 @@ def read_grid_config(fname, grid_dict={}):
                 value = np.float64(value)
             
             elif item.startswith('default_'):
-                #item = item.replace('default_', '')
                 try:
                     value = np.float64(value)
                 except ValueError:
