@@ -6,7 +6,7 @@ import numpy as np
 import sqlite3
 import numpy as np
 import sys
-from scipy import ndimage, spinterpolate
+from scipy import ndimage, interpolate as spinterpolate
 import specgrid
 from glob import glob
 from pyspec import oned
