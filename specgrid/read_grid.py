@@ -6,6 +6,7 @@ import numpy as np
 import sqlite3
 import numpy as np
 import sys
+from scipy import ndimage
 import specgrid
 from glob import glob
 from pyspec import oned
@@ -371,3 +372,17 @@ class ConvolveResolution(object):
         tmp_spec = oned.onedspec(self.wave, flux, mode='waveflux')
         convolved_spec = tmp_spec.convolve_profile(self.requested_resolution, self.initial_resolution)
         return convolved_spec.flux
+
+
+class ConvolveGauss(object):
+    def __init__(self, sigma, wave=None):
+        self.sigma = sigma
+        if wave is not None: self.set_wave(wave)
+    def set_wave(self, wave):
+        self.wave = wave
+        self.world2pix = 1/float(abs(wave[1]-wave[0]))
+    def convolve_grid(self, flux):
+#        tmp_spec = oned.onedspec(self.wave, flux, mode='waveflux')
+        convoled_flux = ndimage.gaussian_filter1d(flux, self.sigma*self.world2pix)
+#        convolved_spec = tmp_spec.convolve_profile(self.requested_resolution, self.initial_resolution)
+        return convolved_flux
