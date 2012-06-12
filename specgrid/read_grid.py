@@ -280,7 +280,7 @@ def load_spectra(config_dict, fnames, wave, **kwargs):
     
     print ("Loading spectra")
     for i, fname in enumerate(fnames):
-        sys.stdout.write('\rat %.2f %%' % (float(i)/float(len(fnames))))
+        sys.stdout.write('\rat %d of %d  [%.2f %%]' % (i, len(fnames), float(i)/float(len(fnames))))
         sys.stdout.flush()
         flux = np.fromfile(config_dict['datadir'] + fname, dtype = config_dict['datatype'])
         
