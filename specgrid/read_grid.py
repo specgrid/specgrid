@@ -6,7 +6,7 @@ import numpy as np
 import sqlite3
 import numpy as np
 import sys
-from scipy import ndimage, interpolate
+from scipy import ndimage, spinterpolate
 import specgrid
 from glob import glob
 from pyspec import oned
@@ -292,7 +292,7 @@ def load_spectra(config_dict, fnames, wave, **kwargs):
             flux = normalizer.normalize_grid(flux)
         
         if interpolate is not None:
-            interpolator = interpolate.interp1d(wave, flux, bounds_error=False, fill_value=np.nan)
+            interpolator = spinterpolate.interp1d(wave, flux, bounds_error=False, fill_value=np.nan)
             flux = interpolator(interpolate)
             
         fluxes[i] = flux
