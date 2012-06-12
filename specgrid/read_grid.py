@@ -394,7 +394,7 @@ class ConvolveGauss(object):
 class MARCSConvolveProfile(ConvolveGauss):
     def __init__(self, requested_resolution, initial_resolution=20000, wave=None):
         self.requested_resolution = requested_resolution
-        self.resolution = np.sqrt(initial_resolution**-2 - requested_resolution**-2)**-1
+        self.resolution = np.sqrt(requested_resolution**-2 - initial_resolution**-2)**-1
     def set_wave(self, wave):
         self.wave = wave
-        self.pixsigma = marcs.wave[0]/self.resolution/(marcs.wave[1]-marcs.wave[0])
+        self.pixsigma = self.wave[0]/self.resolution/(self.wave[1]-self.wave[0])
