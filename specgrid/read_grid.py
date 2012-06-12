@@ -142,7 +142,7 @@ def read_grid(grid_name, **kwargs):
         elif param in kwargs:
             param_dict[param] = kwargs[param]
         elif param in grid_dict[grid_name]:
-            param_dict[param] = defaults[param]
+            param_dict[param] = grid_dict[grid_name][param]
         else:
             print 'ignoring param %s' % param
         
