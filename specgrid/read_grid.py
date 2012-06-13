@@ -70,7 +70,15 @@ def read_grid_config(fname, grid_dict={}):
             
             elif item.startswith('ignore_'):
                 value = (value.lower().strip() in ('true', '1'))
-                
+
+            elif item.startswith('metric_'):
+                value = (value.lower().strip() in ('true', '1'))
+            else:
+                try:
+                    value = float(value)
+                except ValueError:
+                    value = value
+
             grid_dict[grid][item] = value
     return grid_dict
 
