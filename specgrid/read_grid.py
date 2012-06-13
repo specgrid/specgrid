@@ -115,6 +115,7 @@ def read_grid(grid_name, **kwargs):
     general_dict = kwargs.pop('general_dict', None)
     normalizer = kwargs.get('normalizer', None)
     convolver = kwargs.get('convolver', None)
+    interpolate = kwargs.get('interpolate', None)
     ignore = kwargs.pop('ignore', ())
     
     if general_dict == None:
