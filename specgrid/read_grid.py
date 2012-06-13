@@ -257,6 +257,8 @@ def read_grid(grid_name, **kwargs):
     
     if interpolate is not None:
         wave = interpolate
+        if normalizer is not None:
+            normalizer.wave = interpolate
     return specgrid.specgrid(requested_params, fluxes, wave,
                              requested_param_names, normalizer=normalizer, convolver=convolver,
                              metric=metric, inverse_metric=inverse_metric)
@@ -326,7 +328,7 @@ class NormRange(object):
         if wave is not None:
             self._wave = wave
             self.calculate_idx()    
-        
+
 
     
     def normalize_grid(self, flux):
