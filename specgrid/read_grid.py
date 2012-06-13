@@ -10,6 +10,7 @@ from scipy import ndimage, interpolate as spinterpolate
 import specgrid
 from glob import glob
 from pyspec import oned
+from collections import OrderedDict
 
 try:
     import sqlparse
@@ -136,7 +137,7 @@ def read_grid(grid_name, **kwargs):
     param_names.remove('fname')
     param_values = []
     
-    param_dict = {}
+    param_dict = OrderedDict()
     
     for param in param_names:
         #first check if param_exists
