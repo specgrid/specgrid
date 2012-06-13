@@ -72,7 +72,7 @@ def read_grid_config(fname, grid_dict={}):
                 value = (value.lower().strip() in ('true', '1'))
 
             elif item.startswith('metric_'):
-                value = (value.lower().strip() in ('true', '1'))
+                value = value.lower().strip()
             else:
                 try:
                     value = float(value)
