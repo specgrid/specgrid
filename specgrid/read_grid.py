@@ -253,7 +253,8 @@ def read_grid(grid_name, **kwargs):
     wave = np.fromfile(config_dict['datadir'] + 'wave.npmap')
     fluxes = load_spectra(config_dict, fnames, wave, **kwargs)
     
-    
+    if interpolate is not None:
+        wave = interpolate
     return specgrid.specgrid(requested_params, fluxes, wave,
                              requested_param_names, normalizer=normalizer, convolver=convolver,
                              metric=metric, inverse_metric=inverse_metric)
