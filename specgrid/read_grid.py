@@ -63,13 +63,14 @@ def read_grid_config(fname, grid_dict={}):
                 value = np.float64(value)
             
             elif item.startswith('default_'):
+                item = item.replace('default_', '')
                 try:
                     value = np.float64(value)
                 except ValueError:
                     value = value
-            
-            elif item.startswith('ignore_'):
-                value = (value.lower().strip() in ('true', '1'))
+            #TODO deprecated : take out?
+            #elif item.startswith('ignore_'):
+            #    value = (value.lower().strip() in ('true', '1'))
 
             elif item.startswith('metric_'):
                 value = value.lower().strip()
@@ -157,7 +158,7 @@ def read_grid(grid_name, **kwargs):
             param_dict[param] = grid_dict[grid_name][param]
         else:
             print 'ignoring param %s' % param
-        
+
     
   
     
