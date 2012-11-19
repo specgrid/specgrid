@@ -10,7 +10,7 @@ except ImportError:
 class specgrid(object):
     def __init__(self, params, fluxes, wave, param_names,
                  interpolator = interpolate.LinearNDInterpolator,
-                 normalizer = None, convolver=None, metric={}, inverse_metric={}):
+                 normalizer = None, convolver=None, metric={}, inverse_metric={}, fill_value=-1):
         
         self.param_names = param_names
         self.wave = wave
@@ -38,7 +38,7 @@ class specgrid(object):
         self.fluxes = fluxes
         self.normalizer = normalizer
         self.convolver = convolver
-        self.interpolated_grid = interpolator(params, fluxes)
+        self.interpolated_grid = interpolator(params, fluxes, fill_value=fill_value)
         
         #creating sets
         self.param_name_set = set(self.param_names)
