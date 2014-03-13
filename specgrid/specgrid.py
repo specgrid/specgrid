@@ -6,7 +6,16 @@ try:
     pyspec_available = True
 except ImportError:
     pyspec_available = False
-    
+
+import pandas as pd
+
+class SpecGrid(object):
+
+    def __init__(grid_hdf5_fname):
+        self.grid_store = pd.
+
+
+
 class specgrid(object):
     def __init__(self, params, fluxes, wave, param_names,
                  interpolator = interpolate.LinearNDInterpolator,

@@ -12,6 +12,8 @@ from glob import glob
 from pyspec import oned
 from collections import OrderedDict
 
+import pandas as pd
+
 try:
     import sqlparse
     sqlparse_available = True
@@ -95,6 +97,11 @@ def read_standard_grid_configs(conf_path='~/.specgrid/', grid_dict={}):
     
     return grid_dict
 
+
+def read_grid_hdf5(grid_fname):
+    """
+    Reading the grid from an HDF5 file
+    """
 
 def read_grid(grid_name, **kwargs):
     """Reading in the spectral grid and creating a specgrid dir
