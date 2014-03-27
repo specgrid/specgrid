@@ -12,10 +12,10 @@ class CompositeModel(object):
         if item in self.param2model:
             return getattr(self.param2model[item], item)
         else:
-            return super(CompositeModel, self).__getattribute__(item)
+            return super(CompositeModel, self).__getattr__(item)
 
     def __setattr__(self, item, value):
         if item in self.param2model:
             return setattr(self.param2model[item], item, value)
         else:
-            return super(CompositeModel, self).__setattribute__(item, value)
+            return super(CompositeModel, self).__setattr__(item, value)
