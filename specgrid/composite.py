@@ -10,7 +10,7 @@ class CompositeModel(object):
 
     def __getattr__(self, item):
         if item in self.param2model:
-            return self.param2model[item].__getattr__(item)
+            return getattr(self.param2model[item], item)
         else:
             return super(CompositeModel.__getattribute__(item))
 
