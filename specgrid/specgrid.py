@@ -17,7 +17,7 @@ from astropy import modeling
 from specutils import Spectrum1D
 
 
-class SpectralGrid(modeling.ParametricModel):
+class SpectralGrid(object):
     """
     A SpectralGrid interpolation class. Can serve as a model maybe
 
