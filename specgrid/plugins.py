@@ -51,3 +51,21 @@ class DopplerShift(object):
         return Spectrum1D.from_array(spectrum.wavelength * doppler_factor,
                                      spectrum.flux,
                                      dispersion_unit=spectrum.wavelength.unit)
+
+
+class Observe(object):
+
+    parameter = []
+
+    def __init__(self, observed):
+        self.observed = observed
+
+    def __call__(self, spectrum):
+        wavelength, flux = spectrum.wavelength.value, spectrum.flux.value
+
+        interpolated_flux = np.interp(self.observed.wavelength.value,
+                                      wavelength, flux)
+        return Spectrum1D.from_array(
+            self.observed.wavelength,
+            interpolated_flux * self.observed.flux.unit,
+            dispersion_unit=self.observed.wavelength.unit)
