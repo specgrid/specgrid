@@ -14,6 +14,8 @@ from astropy import units as u
 
 from astropy import modeling
 
+from specutils import Spectrum1D
+
 
 class SpectralGrid(modeling.ParametricModel):
     """
@@ -48,8 +50,8 @@ class SpectralGrid(modeling.ParametricModel):
 
         self.grid_param_names = self.grid_param_names.drop(self.hidden_parameters)
 
-        for param_name in self.grid_param_names:
-            self.__setattr__(param_name, modeling.Parameter(param_name, default=0))
+        #for param_name in self.grid_param_names:
+        #    self.__setattr__(param_name, modeling.Parameter(param_name, default=0))
 
 
     @property
@@ -81,80 +83,22 @@ class SpectralGrid(modeling.ParametricModel):
 
         return self.interpolate_grid(*self.current_parameters)
 
+class MunariGrid(SpectralGrid):
 
-class specgrid(object):
-    def __init__(self, params, fluxes, wave, param_names,
+    teff = 5780.
+    logg = 4.4
+    feh = 0.0
+
+    def __init__(self, grid_hdf5_fname,
                  interpolator = interpolate.LinearNDInterpolator,
-                 normalizer = None, convolver=None, metric={}, inverse_metric={}, fill_value=-1):
-        
-        self.param_names = param_names
-        self.wave = wave
+                 query_string='teff > 0'):
+
+        super(MunariGrid, self).__init__(grid_hdf5_fname, interpolator)
+        self.load_dataset(query_string)
 
 
-        #setting up limits
-        self.param_mins = params.min(axis=0)
-        self.param_maxs = params.max(axis=0)
+    def __call__(self):
+        flux = self.interpolate_grid(self.teff, self.logg, self.feh)
+        return Spectrum1D.from_array(self.wave, flux * u.Unit(1),
+                                     dispersion_unit=u.angstrom)
 
-        #setting up metrics
-        self.metric = dict([(item, lambda x: x) for item in self.param_names])
-        self.inverse_metric = dict([(item, lambda x: x) for item in self.param_names])
-        
-        
-        #inserting metrics
-        self.metric.update(metric)
-        self.inverse_metric.update(inverse_metric)
-
-        self.params = params
-        
-        #applying metric
-        for i, param_name in enumerate(self.param_names):
-            self.params[:,i] = self.inverse_metric[param_name](self.params[:,i])
-            
-        self.fluxes = fluxes
-        self.normalizer = normalizer
-        self.convolver = convolver
-        self.interpolated_grid = interpolator(params, fluxes, fill_value=fill_value)
-        
-        #creating sets
-        self.param_name_set = set(self.param_names)
-        self.all_param_name_set = set(self.param_names)
-        
-        self.plugins = {}
-        
-        
-    def add_plugin(self, plugin_class, **kwargs):
-        plugin_object = plugin_class(self.wave, normalizer=self.normalizer, **kwargs)
-        self.plugins[plugin_object.param_name] = plugin_object
-        self.all_param_name_set.add(plugin_object.param_name)
-    
-    
-    def interpolate_spectrum(self, **kwargs):
-        if pyspec_available:
-            flux = self.interpolate(**kwargs)
-            wave = self.wave
-            return oned.onedspec(wave, flux, mode='waveflux')
-        else:
-            raise NotImplementedError('PySpec is not available')
-        
-    def interpolate(self, **kwargs):
-        #checking if the kwargs are in the param_names
-        req_param_names = set(kwargs.keys())
-        
-        if req_param_names < self.param_name_set:
-            raise TypeError('Missing interpolation arguments need to supply keywords: ' + ','.join(self.param_names))
-        
-        
-        if not req_param_names.issubset(self.all_param_name_set):
-            raise TypeError('Requesting parameters that are not grid')
-        
-        
-        req_param_values = [self.inverse_metric[name](kwargs[name]) for name in self.param_names]
-        
-        interp_flux = self.interpolated_grid(*req_param_values)
-        
-        for key, value in kwargs.items():
-            if key in self.plugins.keys():
-                plugin = self.plugins[key]
-                #plugin.inverse_metric
-                interp_flux = plugin(interp_flux, value)
-        return interp_flux
