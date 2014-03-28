@@ -27,7 +27,8 @@ class SpectralGrid(object):
     grid_hdf5_fname: filename for HDF5 File
     """
 
-    def __init__(self, grid_hdf5_fname, interpolator = interpolate.LinearNDInterpolator):
+    def __init__(self, grid_hdf5_fname,
+                 interpolator=interpolate.LinearNDInterpolator):
         super(SpectralGrid, self).__init__()
         if not os.path.exists(grid_hdf5_fname):
             raise ValueError('{0} does not exists'.format(grid_hdf5_fname))
