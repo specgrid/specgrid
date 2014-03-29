@@ -1,15 +1,16 @@
+from collections import OrderedDict
 
+class ModelStar(object):
 
-class CompositeModel(object):
-
-    param2model = {}
+    param2model = OrderedDict()
 
     def __init__(self, models_list):
         self.models_list = models_list
-        self.param2model = {}
+        self.param2model = OrderedDict()
         for model in models_list:
             self.param2model.update(dict([(param, model)
                                           for param in model.parameters]))
+        self.parameters = self.param2model.keys()
 
     def __getattr__(self, item):
         if item in self.param2model:
@@ -22,3 +23,18 @@ class CompositeModel(object):
             return setattr(self.param2model[item], item, value)
         else:
             super(CompositeModel, self).__setattr__(item, value)
+
+    def __call__(self):
+        spectrum = self.models_list[0]()
+        for model in self.models_list[1:]:
+            spectrum = model(spectrum)
+        return spectrum
+    
+    def eval(self, **kwargs):
+        for kwarg in kwargs:
+            current_value = getattr(self, kwarg)
+            new_value = kwargs[kwarg]
+            if hasattr(current_value, 'unit'):
+                new_value = Quantity(new_value, current_value.unit)
+            setattr(self, kwarg, new_value)
+        return self()
