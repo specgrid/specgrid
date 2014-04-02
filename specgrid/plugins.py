@@ -14,7 +14,8 @@ class RotationalBroadening(object):
     parameters = ['vrot']
 
     def rotational_profile(self):
-        vrot_by_c = (np.maximum(0.1 * u.m / u.s, np.abs(self.vrot)) / const.c).to(1)
+        vrot_by_c = (np.maximum(0.1 * u.m / u.s, np.abs(self.vrot)) /
+                     const.c).to(1)
         half_width = np.round(vrot_by_c / self.resolution).astype(int)
         profile_velocity = np.linspace(-half_width, half_width,
                                        2 * half_width + 1) * self.resolution
@@ -55,7 +56,7 @@ class DopplerShift(object):
 
 class Observe(object):
 
-    parameter = []
+    parameters = []
 
     def __init__(self, observed):
         self.observed = observed
@@ -69,3 +70,44 @@ class Observe(object):
             self.observed.wavelength,
             interpolated_flux * self.observed.flux.unit,
             dispersion_unit=self.observed.wavelength.unit)
+
+
+def observe(model, wgrid, slit, seeing, overresolve, offset=0.):
+    """Convolve a model with a seeing profile, truncated by a slit, & pixelate
+
+    Parameters
+    ----------
+    model: Table (or dict-like)
+       Holding wavelengths and fluxes in columns 'w', 'flux'
+    wgrid: array
+       Wavelength grid to interpolate model on
+    slit: float
+       Size of the slit in wavelength units
+    seeing: float
+       FWHM of the seeing disk in wavelength units
+    overresolve: int
+       Factor by which detector pixels are overresolved in the wavelength grid
+    offset: float, optional
+       Offset of the star in the slit in wavelength units (default 0.)
+
+    Returns
+    -------
+    Convolved model: Table
+       Holding wavelength grid and interpolated, convolved fluxes
+       in columns 'w', 'flux'
+    """
+    # make filter
+    wgridres = np.min(np.abs(np.diff(wgrid)))
+    filthalfsize = np.round(slit/2./wgridres)
+    filtgrid = np.arange(-filthalfsize,filthalfsize+1)*wgridres
+    # sigma ~ seeing-fwhm/sqrt(8*ln(2.))
+    filtsig = seeing/np.sqrt(8.*np.log(2.))
+    filt = np.exp(-0.5*((filtgrid-offset)/filtsig)**2)
+    filt /= filt.sum()
+    # convolve with pixel width
+    filtextra = int((overresolve-1)/2+0.5)
+    filt = np.hstack((np.zeros(filtextra), filt, np.zeros(filtextra)))
+    filt = nd.convolve1d(filt, np.ones(overresolve)/overresolve)
+    mint = np.interp(wgrid, model['w'], model['flux'])
+    mconv = nd.convolve1d(mint, filt)
+    return Table([wgrid, mconv], names=('w','flux'), meta={'filt': filt})
