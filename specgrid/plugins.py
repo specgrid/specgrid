@@ -14,7 +14,7 @@ class RotationalBroadening(object):
     parameters = ['vrot']
 
     def rotational_profile(self):
-        vrot_by_c = (self.vrot / const.c).to(1)
+        vrot_by_c = (np.maximum(0.1 * u.m / u.s, np.abs(self.vrot)) / const.c).to(1)
         half_width = np.round(vrot_by_c / self.resolution).astype(int)
         profile_velocity = np.linspace(-half_width, half_width,
                                        2 * half_width + 1) * self.resolution

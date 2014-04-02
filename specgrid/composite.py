@@ -1,4 +1,6 @@
 from collections import OrderedDict
+from astropy.units import Quantity
+
 
 class ModelStar(object):
 
@@ -16,13 +18,13 @@ class ModelStar(object):
         if item in self.param2model:
             return getattr(self.param2model[item], item)
         else:
-            return super(CompositeModel, self).__getattribute__(item)
+            return super(ModelStar, self).__getattribute__(item)
 
     def __setattr__(self, item, value):
         if item in self.param2model:
             return setattr(self.param2model[item], item, value)
         else:
-            super(CompositeModel, self).__setattr__(item, value)
+            super(ModelStar, self).__setattr__(item, value)
 
     def __call__(self):
         spectrum = self.models_list[0]()
