@@ -71,6 +71,10 @@ class Observe(object):
             interpolated_flux * self.observed.flux.unit,
             dispersion_unit=self.observed.wavelength.unit)
 
+class Extinction(object):
+    parameters = ['ebv', 'r_v']
+
+
 
 def observe(model, wgrid, slit, seeing, overresolve, offset=0.):
     """Convolve a model with a seeing profile, truncated by a slit, & pixelate

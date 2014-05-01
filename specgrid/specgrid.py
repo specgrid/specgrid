@@ -99,7 +99,25 @@ class MunariGrid(SpectralGrid):
 
 
     def __call__(self):
-        flux = self.interpolate_grid(self.teff, self.logg, self.feh)
-        return Spectrum1D.from_array(self.wave, flux * u.Unit('erg/ (cm2 s Angstrom)'),
-                                     dispersion_unit=u.angstrom)
+        return self.eval(self.teff, self.logg, self.feh)
 
+
+    def eval(self, teff, logg, feh):
+        """
+        Interpolating on the grid to the necessary parameters
+
+        Parameters
+        ----------
+
+        teff: float
+            effective temperature
+        logg: float
+            base ten logarithm of surface gravity in cgs
+        feh: float
+            [Fe/H]
+
+        """
+        flux = self.interpolate_grid(teff, logg, feh)
+        return Spectrum1D.from_array(self.wave,
+                                     flux * u.Unit('erg/ (cm2 s Angstrom)'),
+                                     dispersion_unit=u.angstrom)
