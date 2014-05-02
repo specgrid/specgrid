@@ -1,5 +1,9 @@
 Specgrid documentation
-=============
+======================
 
-Spectral interpolation
+
+.. toctree::
+    :maxdepth: 2
+
+    munari_specgrid
 

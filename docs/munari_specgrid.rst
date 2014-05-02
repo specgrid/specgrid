@@ -1,5 +1,5 @@
 **************************
-Simple Specgrid Operations
+Munari Specgrid Operations
 **************************
 
 The first step is too obtain an appropriate specgrid from the author. The

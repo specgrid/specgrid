@@ -90,6 +90,8 @@ class MunariGrid(SpectralGrid):
     logg = 4.4
     feh = 0.0
 
+    parameters = ['teff', 'logg', 'feh']
+
     def __init__(self, grid_hdf5_fname,
                  interpolator = interpolate.LinearNDInterpolator,
                  query_string='teff > 0'):
