@@ -56,9 +56,9 @@ copyright = u'2012, ' + author
 
 import specgrid
 # The short X.Y version.
-version = packagename.__version__.split('-', 1)[0]
+version = specgrid.__version__.split('-', 1)[0]
 # The full version, including alpha/beta/rc tags.
-release = packagename.__version__
+release = specgrid.__version__
 
 
 # -- Options for HTML output ---------------------------------------------------
