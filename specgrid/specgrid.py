@@ -121,5 +121,6 @@ class MunariGrid(SpectralGrid):
         """
         flux = self.interpolate_grid(teff, logg, feh)
         return Spectrum1D.from_array(self.wave,
-                                     flux * u.Unit('erg/ (cm2 s Angstrom)'),
-                                     dispersion_unit=u.angstrom)
+                                     flux,
+                                     dispersion_unit=u.angstrom,
+                                     unit=u.Unit('erg/ (cm2 s Angstrom)'))

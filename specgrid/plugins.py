@@ -27,7 +27,7 @@ class RotationalBroadening(object):
         return profile/profile.sum()
 
     def __call__(self, spectrum):
-        wavelength, flux = spectrum.wavelength.value, spectrum.flux.value
+        wavelength, flux = spectrum.wavelength.value, spectrum.flux
         log_grid_log_wavelength = np.arange(np.log(wavelength.min()),
                                             np.log(wavelength.max()),
                                             self.resolution.to(1).value)
@@ -38,8 +38,9 @@ class RotationalBroadening(object):
         convolved_flux = np.interp(wavelength, log_grid_wavelength,
                                    log_grid_convolved)
         return Spectrum1D.from_array(spectrum.wavelength,
-                                     convolved_flux * spectrum.flux.unit,
-                                     dispersion_unit=spectrum.wavelength.unit)
+                                     convolved_flux,
+                                     dispersion_unit=spectrum.wavelength.unit,
+                                     unit=spectrum.unit)
 
 
 class DopplerShift(object):
@@ -54,7 +55,7 @@ class DopplerShift(object):
                                      dispersion_unit=spectrum.wavelength.unit)
 
 
-class Observe(object):
+class Interpolate(object):
 
     parameters = []
 
@@ -68,11 +69,29 @@ class Observe(object):
                                       wavelength, flux)
         return Spectrum1D.from_array(
             self.observed.wavelength,
-            interpolated_flux * self.observed.flux.unit,
-            dispersion_unit=self.observed.wavelength.unit)
+            interpolated_flux * self.observed.flux,
+            dispersion_unit=self.observed.wavelength.unit,
+            unit=self.spectrum.unit)
 
-class Extinction(object):
-    parameters = ['ebv', 'r_v']
+class CCM89Extinction(object):
+    parameters = ['a_v', 'r_v']
+
+    def __init__(self, a_v=0.0, r_v=3.1):
+        self.a_v = a_v
+        self.r_v = r_v
+
+    def __call__(self, spectrum):
+
+        from specutils import extinction
+
+        extinction_factor = 10**(-0.4*extinction.extinction_ccm89(
+            spectrum.wavelength, a_v=self.a_v, r_v=self.r_v))
+
+
+        return Spectrum1D.from_array(
+            spectrum.wavelength.value,
+            extinction_factor * spectrum.flux,
+            dispersion_unit=spectrum.wavelength.unit, unit=spectrum.unit)
 
 
 

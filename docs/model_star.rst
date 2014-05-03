@@ -9,7 +9,7 @@ A composite stellar model allows us to create a model that has in addition to
     >>> from specgrid import specgrid
     >>> from specgrid import plugins
     >>> from specgrid import composite
-    >>> spectral_grid = specgrid.MunariGrid('munari_new.h5')
+    >>> spectral_grid = specgrid.MunariGrid('munari.h5')
 
     >>> spectral_grid.parameters = ['teff', 'logg', 'feh']
     >>> rb = plugins.RotationalBroadening() # module for broadening
