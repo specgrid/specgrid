@@ -17,9 +17,9 @@ from astropy import modeling
 from specutils import Spectrum1D
 
 
-class SpectralGrid(object):
+class BaseSpectralGrid(object):
     """
-    A SpectralGrid interpolation class. Can serve as a model maybe
+    A BaseSpectralGrid interpolation class. Can serve as a model maybe
 
     Parameters
     ----------
@@ -27,64 +27,52 @@ class SpectralGrid(object):
     grid_hdf5_fname: filename for HDF5 File
     """
 
+    parameters = None
+
     def __init__(self, grid_hdf5_fname,
                  interpolator=interpolate.LinearNDInterpolator):
-        super(SpectralGrid, self).__init__()
+        super(BaseSpectralGrid, self).__init__()
         if not os.path.exists(grid_hdf5_fname):
             raise ValueError('{0} does not exists'.format(grid_hdf5_fname))
         self.grid_hdf5_fname = grid_hdf5_fname
         self.index = pd.read_hdf(self.grid_hdf5_fname, 'index')
-        self.params = None
-        self.flux = None
 
-        self.interpolator = interpolator
-        self.interpolate_grid = None
-
-        self.grid_param_names = self.index.columns
-
-        #cleaning param_names of
-        self.grid_param_names = self.grid_param_names.drop(['id', 'fname'])
+        self.parameters = self.index.columns
 
         with h5py.File(self.grid_hdf5_fname, 'r') as h5file:
-            self.hidden_parameters = h5file['spectra'].attrs['hidden_parameters']
-            self.wave = h5file['spectra'].attrs['wave'] * u.Unit(h5file['spectra'].attrs['wave_unit'])
+            wavelength_unit = u.Unit(h5file['spectra'].attrs['wavelength.unit'])
+            self.wavelength = h5file['spectra'].attrs['wavelength'] * \
+                              wavelength_unit
+            self.flux_unit = u.Unit(h5file['spectra'].attrs['fluxes.unit'])
 
-        self.grid_param_names = self.grid_param_names.drop(self.hidden_parameters)
+        self.interpolate_grid = interpolator(self.index.values, self.fluxes)
 
-        #for param_name in self.grid_param_names:
-        #    self.__setattr__(param_name, modeling.Parameter(param_name, default=0))
+    def __call__(self):
+        return self.eval(*[getattr(self, item) for item in self.parameters])
 
 
-    @property
-    def current_parameters(self):
-        return [self.__getattribute__(param_name) for param_name in self.grid_param_names]
-
-    def load_dataset(self, query_string):
+    def eval(self, *args):
         """
-        Load the dataset
+        Interpolating on the grid to the necessary parameters
 
         Parameters
         ----------
 
-        query_string: str
-            similar as pandas ???????
+        teff: float
+            effective temperature
+        logg: float
+            base ten logarithm of surface gravity in cgs
+        feh: float
+            [Fe/H]
 
         """
-        selected_index = self.index.query(query_string).index
+        flux = self.interpolate_grid(*args)
+        return Spectrum1D.from_array(self.wavelength.value,
+                                     flux,
+                                     dispersion_unit=self.wavelength.unit,
+                                     unit=self.flux_unit)
 
-        with h5py.File(self.grid_hdf5_fname, 'r') as h5file:
-            self.flux = h5file['spectra/block0_values'][list(selected_index)]
-
-        self.params = self.index[self.grid_param_names].ix[selected_index].values
-
-        self.interpolate_grid = self.interpolator(self.params, self.flux)
-
-    def __call__(self, wavelength):
-        wavelength = u.Quantity(wavelength, u.angstrom)
-
-        return self.interpolate_grid(*self.current_parameters)
-
-class MunariGrid(SpectralGrid):
+class MunariGrid(BaseSpectralGrid):
 
     teff = 5780.
     logg = 4.4
@@ -120,7 +108,7 @@ class MunariGrid(SpectralGrid):
 
         """
         flux = self.interpolate_grid(teff, logg, feh)
-        return Spectrum1D.from_array(self.wave,
+        return Spectrum1D.from_array(self.wavelength,
                                      flux,
                                      dispersion_unit=u.angstrom,
                                      unit=u.Unit('erg/ (cm2 s Angstrom)'))
