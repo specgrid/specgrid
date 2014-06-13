@@ -40,10 +40,11 @@ class BaseSpectralGrid(object):
         self.parameters = self.index.columns
 
         with h5py.File(self.grid_hdf5_fname, 'r') as h5file:
-            wavelength_unit = u.Unit(h5file['spectra'].attrs['wavelength.unit'])
-            self.wavelength = h5file['spectra'].attrs['wavelength'] * \
+            wavelength_unit = u.Unit(h5file['fluxes'].attrs['wavelength.unit'])
+            self.wavelength = h5file['fluxes'].attrs['wavelength'] * \
                               wavelength_unit
-            self.flux_unit = u.Unit(h5file['spectra'].attrs['fluxes.unit'])
+            self.flux_unit = u.Unit(h5file['fluxes'].attrs['fluxes.unit'])
+            self.fluxes = h5file['fluxes']
 
         self.interpolate_grid = interpolator(self.index.values, self.fluxes)
 
