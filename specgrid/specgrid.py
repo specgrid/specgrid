@@ -44,7 +44,7 @@ class BaseSpectralGrid(object):
             self.wavelength = h5file['fluxes'].attrs['wavelength'] * \
                               wavelength_unit
             self.flux_unit = u.Unit(h5file['fluxes'].attrs['flux.unit'])
-            self.fluxes = h5file['fluxes']
+            self.fluxes = np.array(h5file['fluxes'])
 
         self.interpolate_grid = interpolator(self.index.values, self.fluxes)
 
