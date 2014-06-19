@@ -38,6 +38,9 @@ class BaseSpectralGrid(object):
         self.index = pd.read_hdf(self.grid_hdf5_fname, 'index')
 
         self.parameters = self.index.columns
+        
+        for parameter_name in self.parameters:
+            setattr(self, parameter_name, None)
 
         with h5py.File(self.grid_hdf5_fname, 'r') as h5file:
             wavelength_unit = u.Unit(h5file['fluxes'].attrs['wavelength.unit'])
