@@ -69,7 +69,7 @@ class Interpolate(object):
                                       wavelength, flux)
         return Spectrum1D.from_array(
             self.observed.wavelength,
-            interpolated_flux * self.observed.flux,
+            interpolated_flux,
             dispersion_unit=self.observed.wavelength.unit,
             unit=self.spectrum.unit)
 
