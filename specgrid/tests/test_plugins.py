@@ -1,8 +1,8 @@
 import numpy as np
 import numpy.testing as npt
-from specutils import Spectrum1D, rvmeasure
+from specutils import Spectrum1D
 from astropy import units as u
-from specgrid.plugins import Convolve, Normalize
+from specgrid.plugins import Convolve, Interpolate
 from scipy.integrate import simps
 
 """
@@ -43,37 +43,43 @@ def test_convolution():
     plt.figure(1)
     plt.xlim(5500, 8500)
     plt.ylim(-0.25, 1.25)
-    plt.plot(my_spec.wavelength.value, my_spec.flux, color='blue', label = 'my_spec')
+    plt.plot(my_spec.wavelength.value, my_spec.flux, color= 'blue', label = 'my_spec')
     plt.plot(conv_spectrum.wavelength.value, conv_spectrum.flux, color = 'red', label = 'conv_spectrum')
     plt.legend(loc = 'upper right')
     plt.show()
     '''
 
 
-def test_normalization():
-    test_spec = Spectrum1D.from_array(np.arange(1,1001), np.arange(1,1001), dispersion_unit = 'Angstrom', unit = ' erg / (cm^2 s Angstrom)')
-    ON = orderofnormalization = 1
-    normalization_plugin = Normalize(ON)
-    norm_spec = normalization_plugin(test_spec)
-    norm_flux = norm_spec.flux
-    norm_flux_mean = np.mean(norm_flux)
+def test_interpolate():
+    obs_spectrum = Spectrum1D.from_array(np.arange(1,26), np.zeros(25), dispersion_unit = 'micron', unit = 'erg / (cm^2 s Angstrom)')
+    test_spectrum = Spectrum1D.from_array(np.arange(0.5,26.5,1), np.arange(0.5,26.5,1), dispersion_unit = 'micron', unit = 'erg / (cm^2 s Angstrom)')
     
-    #This allows you to manually check the mean value of the notmalized flux. This should be very close to 1 if the normalization was sucessful.
-    print "norm_flux_mean = {0}".format(norm_flux_mean)
-    #When I tested this, I got: norm_flux_mean =  1.0
+    interpolate_plugin = Interpolate(obs_spectrum)
+    interpolated_test_spectrum = interpolate_plugin(test_spectrum)
+
+    expected_interpolated_flux = np.arange(1,26)
+    interpolated_test_flux = interpolated_test_spectrum.flux
     
-    npt.assert_almost_equal(norm_flux_mean, 1, decimal = 3) 
+    #This allows you to manually check the mean value of the interpolated test flux. This should be an array of 1 to 25 (spacing of 1).
+    print "interpolated_test_flux = {0}".format(interpolated_test_flux)
+    #When I tested this, I got: interpolated_test_flux = [  1.   2.   3.   4.   5.   6.   7.   8.   9.  10.  11.  12.  13.  14.  15.  16.  17.  18.  19.  20.  21.  22.  23.  24.  25.] ... As expected.
+
+    npt.assert_array_almost_equal(interpolated_test_flux, expected_interpolated_flux, decimal = 6)
 
     """
-    Optional plotting, to get a feel for why this test works conceptually. To use this feature, remove the ''' below, and zoom near y = 1 to see the normalization.
+    Optional plotting, to get a feel for why this test works conceptually. To use this feature, remove the ''' below, and take notice that the green and red markers lie on the same x-values, while the green and blue markers DO NOT lie on the same x-values (given that the interpolate worked correctly).
     """
     '''
     plt.clf()
     plt.figure(1)
-    plt.xlim(-100, 1100)
-    plt.ylim(-100, 1100)
-    plt.plot(test_spec.wavelength.value, test_spec.flux, color = 'blue', label = 'test_spec')
-    plt.plot(norm_spec.wavelength.value, norm_spec.flux, color = 'red', label = 'norm_spec')
-    plt.legend(loc = 'upper left')
+    plt.xlim(0, 26)
+    plt.ylim(-1, 26)
+    plt.plot(obs_spectrum.wavelength.value, obs_spectrum.flux, marker = 'o', linestyle = 'None', color = 'green', label = 'obs_spectrum')
+    plt.plot(test_spectrum.wavelength.value, test_spectrum.flux, marker = 'o', linestyle = 'None', color = 'blue', label = 'test_spectrum')
+    plt.plot(interpolated_test_spectrum.wavelength.value, interpolated_test_spectrum.flux, marker = 'o', linestyle = 'None', color = 'red', label = 'interpolated_test_spectrum')
+    plt.legend(loc = 'upper left', numpoints = 1)
+    plt.grid()
+    plt.xticks([i for i in range(0,27)])
+    plt.yticks([i for i in range(0,27)])
     plt.show()
     '''

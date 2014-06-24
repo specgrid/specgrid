@@ -5,7 +5,7 @@ import numpy as np
 import astropy.units as u
 import astropy.constants as const
 
-from specutils import Spectrum1D, rvmeasure
+from specutils import Spectrum1D
 
 
 class RotationalBroadening(object):
@@ -113,46 +113,16 @@ class Interpolate(object):
         self.observed = observed
 
     def __call__(self, spectrum):
-        wavelength, flux = spectrum.wavelength.value, spectrum.flux.value
-
+        wavelength, flux = spectrum.wavelength.value, spectrum.flux
+        
         interpolated_flux = np.interp(self.observed.wavelength.value,
                                       wavelength, flux)
         return Spectrum1D.from_array(
             self.observed.wavelength,
             interpolated_flux,
-            dispersion_unit=self.observed.wavelength.unit,
-            unit=self.spectrum.unit)
+            dispersion_unit = self.observed.wavelength.unit,
+            unit = self.observed.unit)
 
-
-#Specutils Rvmeasure Normalization Plugin
-class Normalize(object):
-
-    """
-    This class can be called to do a normalization on a given spectrum. You must initialize it with the desired order of normalization. The output will be a Spectrum1D object.
-
-    Parameters
-    ----------
-    order_of_normalization: float
-        Sets the order of the polynomial which will be fit to the spectrum to notmalize the spectrum.
-    """
-
-    parameters = []
-
-    def __init__(self,order_of_normalization):
-        self.order_of_normalization = order_of_normalization
-        #Note: Order = 1 is recommended.
-    
-    def __call__(self,spectrum):
-        O_o_N = self.order_of_normalization
-
-        wavelength, flux = spectrum.wavelength.value, spectrum.flux
-        normalized_flux = rvmeasure.rmcontinuum(wavelength, flux, order = O_o_N)
-
-        return Spectrum1D.from_array(
-            spectrum.wavelength,
-            normalized_flux,
-            dispersion_unit = spectrum.wavelength.unit,
-            unit = spectrum.unit)
 
 class CCM89Extinction(object):
     parameters = ['a_v', 'r_v']
