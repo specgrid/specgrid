@@ -1,4 +1,5 @@
 import scipy.ndimage as nd
+from scipy.ndimage.filters import gaussian_filter1d
 import numpy as np
 
 import astropy.units as u
@@ -55,7 +56,56 @@ class DopplerShift(object):
                                      dispersion_unit=spectrum.wavelength.unit)
 
 
+#Guassian Convolution
+class Convolve(object):
+    
+    """
+    This class can be called to do a gaussian convolution on a given spectrum. You must initialize it with the desired instrumental resolution and central wavelength. The output will be a Spectrum1D object.
+
+    Parameters
+    ----------
+    resolution: float
+        resolution R defined as lambda / delta lambda.
+    central_wavelength: quantity
+        the middle of the bandpass of interest.
+    """
+    parameters = []
+
+    def __init__(self,resolution, central_wavelength):
+        self.resolution = resolution
+        self.central_wavelength = central_wavelength
+
+    def __call__(self,spectrum):
+        R = self.resolution
+        Lambda = self.central_wavelength.value
+        wavelength = spectrum.dispersion.value
+        
+        conversionfactor = 2 * np.sqrt(2 * np.log(2))
+        deltax = np.mean(wavelength[1:] -wavelength[0:-1])
+        FWHM = Lambda/R
+        sigma = (FWHM/deltax)/conversionfactor
+        
+        flux = spectrum.flux
+
+        convolved_flux = gaussian_filter1d(flux, sigma, axis = 0, order = 0)
+
+        return Spectrum1D.from_array(
+            spectrum.dispersion,
+            convolved_flux,
+            dispersion_unit = spectrum.dispersion.unit,
+            unit = spectrum.unit)
+
+
 class Interpolate(object):
+
+    """
+    This class can be called to do a interpolation on a given spectrum. You must initialize it with the observed spectrum. The output will be a Spectrum1D object.
+
+    Parameters
+    ----------
+    observed: Spectrum1D object
+        This is the observed spectrum which you want to interpolate your (model) spectrum to.
+    """
 
     parameters = []
 
@@ -63,15 +113,16 @@ class Interpolate(object):
         self.observed = observed
 
     def __call__(self, spectrum):
-        wavelength, flux = spectrum.wavelength.value, spectrum.flux.value
-
+        wavelength, flux = spectrum.wavelength.value, spectrum.flux
+        
         interpolated_flux = np.interp(self.observed.wavelength.value,
                                       wavelength, flux)
         return Spectrum1D.from_array(
             self.observed.wavelength,
             interpolated_flux,
-            dispersion_unit=self.observed.wavelength.unit,
-            unit=self.spectrum.unit)
+            dispersion_unit = self.observed.wavelength.unit,
+            unit = self.observed.unit)
+
 
 class CCM89Extinction(object):
     parameters = ['a_v', 'r_v']
