@@ -2,7 +2,7 @@ from scipy import optimize
 import numpy as np
 from collections import OrderedDict
 
-def fit_spectrum(spectrum, guess, model_star, fitter='leastsq'):
+def fit_spectrum(spectrum, guess, model_star, fitter='leastsq', fill_value=1e99):
     def spectral_model_fit(pars):
         pardict = OrderedDict()
         for key, par in zip(guess.keys(), pars):
@@ -16,12 +16,14 @@ def fit_spectrum(spectrum, guess, model_star, fitter='leastsq'):
             uncertainty = np.ones_like(spectrum.flux)
 
         if np.isnan(model.flux[0]):
-            return np.inf
+            model_flux = np.ones_like(model.flux) * fill_value
         else:
-            if fitter == 'leastsq':
-                return ((spectrum.flux - model.flux) / uncertainty)
-            else:
-                return np.sum(((spectrum.flux - model.flux) / uncertainty)**2)
+            model_flux = model.flux
+        if fitter == 'leastsq':
+
+            return ((spectrum.flux - model.flux) / uncertainty)
+        else:
+            return np.sum(((spectrum.flux - model.flux) / uncertainty)**2)
 
 
     if fitter == 'leastsq':
