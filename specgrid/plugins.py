@@ -1,6 +1,9 @@
+import warnings
+
 import scipy.ndimage as nd
 from scipy.ndimage.filters import gaussian_filter1d
 import numpy as np
+from numpy.polynomial import Polynomial
 
 import astropy.units as u
 import astropy.constants as const
@@ -58,9 +61,10 @@ class DopplerShift(object):
 
 #Guassian Convolution
 class Convolve(object):
-    
     """
-    This class can be called to do a gaussian convolution on a given spectrum. You must initialize it with the desired instrumental resolution and central wavelength. The output will be a Spectrum1D object.
+    This class can be called to do a gaussian convolution on a given spectrum.
+    You must initialize it with the desired instrumental resolution and central
+    wavelength. The output will be a Spectrum1D object.
 
     Parameters
     ----------
@@ -79,32 +83,34 @@ class Convolve(object):
         R = self.resolution
         Lambda = self.central_wavelength.value
         wavelength = spectrum.dispersion.value
-        
+
         conversionfactor = 2 * np.sqrt(2 * np.log(2))
-        deltax = np.mean(wavelength[1:] -wavelength[0:-1])
+        deltax = np.mean(wavelength[1:] - wavelength[0:-1])
         FWHM = Lambda/R
         sigma = (FWHM/deltax)/conversionfactor
-        
+
         flux = spectrum.flux
 
-        convolved_flux = gaussian_filter1d(flux, sigma, axis = 0, order = 0)
+        convolved_flux = gaussian_filter1d(flux, sigma, axis=0, order=0)
 
         return Spectrum1D.from_array(
             spectrum.dispersion,
             convolved_flux,
-            dispersion_unit = spectrum.dispersion.unit,
-            unit = spectrum.unit)
+            dispersion_unit=spectrum.dispersion.unit, unit=spectrum.unit)
 
 
 class Interpolate(object):
 
     """
-    This class can be called to do a interpolation on a given spectrum. You must initialize it with the observed spectrum. The output will be a Spectrum1D object.
+    This class can be called to do a interpolation on a given spectrum.
+    You must initialize it with the observed spectrum. The output will be a
+    Spectrum1D object.
 
     Parameters
     ----------
     observed: Spectrum1D object
-        This is the observed spectrum which you want to interpolate your (model) spectrum to.
+        This is the observed spectrum which you want to interpolate your
+        (model) spectrum to.
     """
 
     parameters = []
@@ -114,14 +120,66 @@ class Interpolate(object):
 
     def __call__(self, spectrum):
         wavelength, flux = spectrum.wavelength.value, spectrum.flux
-        
         interpolated_flux = np.interp(self.observed.wavelength.value,
                                       wavelength, flux)
         return Spectrum1D.from_array(
             self.observed.wavelength,
             interpolated_flux,
-            dispersion_unit = self.observed.wavelength.unit,
-            unit = self.observed.unit)
+            dispersion_unit=self.observed.wavelength.unit,
+            unit=self.observed.unit)
+
+
+class Normalize(object):
+    """Normalize a model spectrum to an observed one using a polynomial
+
+    Parameters
+    ----------
+    observed : Spectrum1D object
+        The observed spectrum to which the model should be matched
+    npol : int
+        The degree of the polynomial
+    """
+
+    parameters = []
+
+    def __init__(self, observed, npol):
+        self.observed = observed
+        if getattr(observed, 'uncertainty', None) is None:
+            self.uncertainty = 1.
+        else:
+            self.uncertainty = getattr(observed.uncertainty, 'array',
+                                       observed.uncertainty)
+        self.signal_to_noise = observed.flux / self.uncertainty
+        self._Vp = np.polynomial.polynomial.polyvander(
+            observed.wavelength/observed.wavelength.mean() - 1., npol)
+        self.domain = u.Quantity([observed.wavelength.min(),
+                                  observed.wavelength.max()])
+        self.window = self.domain/observed.wavelength.mean() - 1.
+
+    def __call__(self, model):
+        rcond = (len(self.observed.flux) *
+                 np.finfo(self.observed.flux.dtype).eps)
+        # V[:,0]=mfi/e, Vp[:,1]=mfi/e*w, .., Vp[:,npol]=mfi/e*w**npol
+        V = self._Vp * (model.flux / self.uncertainty)[:,np.newaxis]
+        # normalizes different powers
+        scl = np.sqrt((V*V).sum(0))
+        sol, resids, rank, s = np.linalg.lstsq(V/scl, self.signal_to_noise,
+                                               rcond)
+        sol = (sol.T/scl).T
+        if rank != self._Vp.shape[-1] - 1:
+            msg = "The fit may be poorly conditioned"
+            warnings.warn(msg)
+
+        fit = np.dot(V, sol) * self.uncertainty
+
+        # keep coefficients in case the outside wants to look at it
+        self.polynomial = Polynomial(sol, domain=self.domain.value,
+                                     window=self.window.value)
+
+        return Spectrum1D.from_array(
+            self.observed.wavelength.value,
+            fit, unit=self.observed.unit,
+            dispersion_unit=self.observed.wavelength.unit)
 
 
 class CCM89Extinction(object):
