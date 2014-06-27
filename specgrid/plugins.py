@@ -143,13 +143,15 @@ class Normalize(object):
     parameters = []
 
     def __init__(self, observed, npol):
-        self.observed = observed
         if getattr(observed, 'uncertainty', None) is None:
             self.uncertainty = 1.
         else:
             self.uncertainty = getattr(observed.uncertainty, 'array',
                                        observed.uncertainty)
         self.signal_to_noise = observed.flux / self.uncertainty
+        self.flux_unit = observed.unit
+        self._rcond = (len(observed.flux) *
+                       np.finfo(observed.flux.dtype).eps)
         self._Vp = np.polynomial.polynomial.polyvander(
             observed.wavelength/observed.wavelength.mean() - 1., npol)
         self.domain = u.Quantity([observed.wavelength.min(),
@@ -157,29 +159,80 @@ class Normalize(object):
         self.window = self.domain/observed.wavelength.mean() - 1.
 
     def __call__(self, model):
-        rcond = (len(self.observed.flux) *
-                 np.finfo(self.observed.flux.dtype).eps)
         # V[:,0]=mfi/e, Vp[:,1]=mfi/e*w, .., Vp[:,npol]=mfi/e*w**npol
-        V = self._Vp * (model.flux / self.uncertainty)[:,np.newaxis]
+        V = self._Vp * (model.flux / self.uncertainty)[:, np.newaxis]
         # normalizes different powers
         scl = np.sqrt((V*V).sum(0))
         sol, resids, rank, s = np.linalg.lstsq(V/scl, self.signal_to_noise,
-                                               rcond)
-        sol = (sol.T/scl).T
+                                               self._rcond)
+        sol = (sol.T / scl).T
         if rank != self._Vp.shape[-1] - 1:
             msg = "The fit may be poorly conditioned"
             warnings.warn(msg)
 
         fit = np.dot(V, sol) * self.uncertainty
-
         # keep coefficients in case the outside wants to look at it
         self.polynomial = Polynomial(sol, domain=self.domain.value,
                                      window=self.window.value)
+        return Spectrum1D.from_array(
+            model.wavelength.value,
+            fit, unit=self.flux_unit,
+            dispersion_unit=model.wavelength.unit)
+
+
+class NormalizeParts(object):
+    """Normalize a model spectrum to an observed one in multiple parts
+
+    Here, different parts could, e.g., be different echelle orders or
+    different chips for GMOS spectra.
+
+    Parameters
+    ----------
+    observed : Spectrum1D object
+        The observed spectrum to which the model should be matched
+    parts : list of slices, index arrays, or boolean arrays
+        Different parts of the observed spectrum which should be normalized
+        separately.
+    npol : list of int
+        Polynomial degrees for the different parts
+    """
+    parameters = []
+
+    def __init__(self, observed, parts, npol):
+        self.parts = parts
+        self.normalizers = []
+        try:
+            if len(parts) != len(npol):
+                raise ValueError("List of parts should match in length to "
+                                 "list of degrees")
+        except TypeError:  # npol is single number
+            npol = [npol]*len(parts)
+
+        for part, _npol in zip(parts, npol):
+            self.normalizers.append(
+                Normalize(self.spectrum_1d_getitem(observed, part), _npol))
+
+    @staticmethod
+    def spectrum_1d_getitem(observed, part):
+        observed_part = Spectrum1D.from_array(
+            observed.wavelength.value[part],
+            observed.flux[part],
+            unit=observed.unit,
+            dispersion_unit=observed.wavelength.unit)
+        if getattr(observed, 'uncertainty', None) is not None:
+            observed_part.uncertainty = getattr(observed.uncertainty, 'array',
+                                                observed.uncertainty)[part]
+        return observed_part
+
+    def __call__(self, model):
+        fit = np.zeros_like(model.wavelength.value)
+        for part, normalizer in zip(self.parts, self.normalizers):
+            fit[part] = normalizer(self.spectrum_1d_getitem(model, part)).flux
 
         return Spectrum1D.from_array(
-            self.observed.wavelength.value,
-            fit, unit=self.observed.unit,
-            dispersion_unit=self.observed.wavelength.unit)
+            model.wavelength.value,
+            fit, unit=self.normalizers[0].flux_unit,
+            dispersion_unit=model.wavelength.unit)
 
 
 class CCM89Extinction(object):
@@ -195,7 +248,6 @@ class CCM89Extinction(object):
 
         extinction_factor = 10**(-0.4*extinction.extinction_ccm89(
             spectrum.wavelength, a_v=self.a_v, r_v=self.r_v))
-
 
         return Spectrum1D.from_array(
             spectrum.wavelength.value,

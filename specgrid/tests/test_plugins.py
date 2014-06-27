@@ -4,7 +4,7 @@ from numpy.polynomial import Polynomial
 
 from specutils import Spectrum1D
 from astropy import units as u
-from specgrid.plugins import Convolve, Interpolate, Normalize
+from specgrid.plugins import Convolve, Interpolate, Normalize, NormalizeParts
 from scipy.integrate import simps
 
 
@@ -62,3 +62,27 @@ def test_normalize():
                         obs_spectrum.flux)
     npt.assert_allclose(norm.polynomial.convert().coef,
                         np.array(coeff + [0.]), rtol=1e-5, atol=1.e-10)
+
+
+def test_normalize_parts():
+    w = np.arange(4000., 5000., 10.)
+    coeff = [1., 0.1, 0.1]
+    pol = Polynomial(coeff)
+    obs_spectrum = Spectrum1D.from_array(w, pol(w), dispersion_unit=u.AA)
+    parts = [slice(0, 30), slice(30, None)]
+    norm_parts = NormalizeParts(obs_spectrum, parts, npol=[3, 3])
+    model = Spectrum1D.from_array(w, np.ones_like(w), dispersion_unit=u.AA)
+    fit = norm_parts(model)
+    npt.assert_allclose(fit.flux, obs_spectrum.flux)
+    for normalizer in norm_parts.normalizers:
+        npt.assert_allclose(normalizer.polynomial.convert().coef,
+                            np.array(coeff + [0.]), rtol=1e-3, atol=1.e-5)
+    # try also with boolean arrays
+    parts = [np.where(w < 4400.), np.where(w >= 4400.)]
+    norm_parts = NormalizeParts(obs_spectrum, parts, npol=[3, 3])
+    model = Spectrum1D.from_array(w, np.ones_like(w), dispersion_unit=u.AA)
+    fit = norm_parts(model)
+    npt.assert_allclose(fit.flux, obs_spectrum.flux)
+    for normalizer in norm_parts.normalizers:
+        npt.assert_allclose(normalizer.polynomial.convert().coef,
+                            np.array(coeff + [0.]), rtol=1e-3, atol=1.e-5)
