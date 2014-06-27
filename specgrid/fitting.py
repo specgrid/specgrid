@@ -2,7 +2,10 @@ from scipy import optimize
 import numpy as np
 from collections import OrderedDict
 
-def fit_spectrum(spectrum, guess, model_star, fitter='leastsq', fill_value=1e99):
+
+def fit_spectrum(spectrum, guess, model_star, fitter='leastsq',
+                 fill_value=1e99, valid_slice=slice(None)):
+
     def spectral_model_fit(pars):
         pardict = OrderedDict()
         for key, par in zip(guess.keys(), pars):
@@ -10,7 +13,7 @@ def fit_spectrum(spectrum, guess, model_star, fitter='leastsq', fill_value=1e99)
 
         model = model_star.eval(**pardict)
 
-        if hasattr(spectrum, 'uncertainty') and spectrum.uncertainty is not None:
+        if getattr(spectrum, 'uncertainty', None) is not None:
             uncertainty = spectrum.uncertainty
         else:
             uncertainty = np.ones_like(spectrum.flux)
@@ -19,27 +22,29 @@ def fit_spectrum(spectrum, guess, model_star, fitter='leastsq', fill_value=1e99)
             model_flux = np.ones_like(model.flux) * fill_value
         else:
             model_flux = model.flux
-        if fitter == 'leastsq':
 
-            return ((spectrum.flux - model.flux) / uncertainty)
-        else:
-            return np.sum(((spectrum.flux - model.flux) / uncertainty)**2)
-
+        quality = ((spectrum.flux - model_flux) / uncertainty)[valid_slice]
+        return quality if fitter == 'leastsq' else quality.sum()
 
     if fitter == 'leastsq':
         fit = optimize.leastsq(spectral_model_fit, np.array(guess.values()),
-                            full_output=True)
+                               full_output=True)
 
-        stellar_params = OrderedDict((key, par) for key, par in zip(guess.keys(), fit[0]))
+        stellar_params = OrderedDict((key, par)
+                                     for key, par in zip(guess.keys(), fit[0]))
         if fit[1] is not None:
             stellar_params_uncertainty = OrderedDict(
                 (key, np.sqrt(par)) for key, par in
-                 zip(guess.keys(), np.diag(fit[1])))
+                zip(guess.keys(), np.diag(fit[1])))
         else:
-            stellar_params_uncertainty = OrderedDict((key, None) for key in guess.keys())
+            stellar_params_uncertainty = OrderedDict((key, None)
+                                                     for key in guess.keys())
     else:
-        fit =  optimize.minimize(spectral_model_fit, np.array(guess.values()), method=fitter)
-        stellar_params = OrderedDict((key, par) for key, par in zip(guess.keys(), fit['x']))
-        stellar_params_uncertainty = OrderedDict((key, None) for key, par in zip(guess.keys(), fit['x']))
+        fit = optimize.minimize(spectral_model_fit, np.array(guess.values()),
+                                method=fitter)
+        stellar_params = OrderedDict(
+            (key, par) for key, par in zip(guess.keys(), fit['x']))
+        stellar_params_uncertainty = OrderedDict(
+            (key, None) for key, par in zip(guess.keys(), fit['x']))
 
     return stellar_params, stellar_params_uncertainty, fit
