@@ -73,10 +73,12 @@ class InstrumentConvolve(object):
         number of pixels per resolution element (default=2.)
 
     """
-    parameters = []
+    R = 0 * u.Unit(1)
+    parameters = ['R']
 
     def __init__(self, R, sampling=2.):
         self.R = u.Quantity(R, u.Unit(1))
+
         self.sampling = float(sampling)
 
     def __call__(self, spectrum):
@@ -87,8 +89,8 @@ class InstrumentConvolve(object):
                                                  self.R.to(1).value))
         log_grid_wavelength = np.exp(log_grid_log_wavelength)
         log_grid_flux = np.interp(log_grid_wavelength, wavelength, flux)
-
-        log_grid_convolved = nd.gaussian_filter1d(log_grid_flux, self.sampling)
+        sigma = self.sampling / (2 * np.sqrt(2 * np.log(2)))
+        log_grid_convolved = nd.gaussian_filter1d(log_grid_flux, sigma)
         convolved_flux = np.interp(wavelength, log_grid_wavelength,
                                    log_grid_convolved)
 
