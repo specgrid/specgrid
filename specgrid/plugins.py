@@ -59,6 +59,47 @@ class DopplerShift(object):
                                      dispersion_unit=spectrum.wavelength.unit)
 
 
+class InstrumentConvolve(object):
+    """
+    Convolve with a gaussian with given resolution to mimick an instrument
+
+    Parameters
+    ----------
+
+    R : float or astropy.units.Quantity (unitless)
+        resolution of the spectrum R = lambda/delta_lambda
+
+    sampling: float
+        number of pixels per resolution element (default=2.)
+
+    """
+    R = 0 * u.Unit(1)
+    parameters = ['R']
+
+    def __init__(self, R, sampling=2.):
+        self.R = u.Quantity(R, u.Unit(1))
+
+        self.sampling = float(sampling)
+
+    def __call__(self, spectrum):
+        wavelength, flux = spectrum.wavelength.value, spectrum.flux
+        log_grid_log_wavelength = np.arange(np.log(wavelength.min()),
+                                            np.log(wavelength.max()),
+                                            1 / (self.sampling *
+                                                 self.R.to(1).value))
+        log_grid_wavelength = np.exp(log_grid_log_wavelength)
+        log_grid_flux = np.interp(log_grid_wavelength, wavelength, flux)
+        sigma = self.sampling / (2 * np.sqrt(2 * np.log(2)))
+        log_grid_convolved = nd.gaussian_filter1d(log_grid_flux, sigma)
+        convolved_flux = np.interp(wavelength, log_grid_wavelength,
+                                   log_grid_convolved)
+
+        return Spectrum1D.from_array(spectrum.wavelength,
+                                     convolved_flux,
+                                     dispersion_unit=spectrum.wavelength.unit,
+                                     unit=spectrum.unit)
+
+
 #Guassian Convolution
 class Convolve(object):
     """
