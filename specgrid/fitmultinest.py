@@ -1,4 +1,5 @@
 from scipy.stats import norm, poisson
+import pymultinest
 
 class UniformPrior(object):
     """
@@ -61,16 +62,34 @@ class PoissonPrior(object):
         
     def __call__(self,cube):
         return poisson.ppf(cube,loc=self.m)
-        
-#def multinest_spectrum(grid, spectrum, 
-#priors={'teff':UniformPrior(4000, 9000), 'logg':GaussianPrior(3, 0.5), 'feh':FixedPrior(-0.5))
 
-class MultiNest(object):
+class SpectralData(object):
+    pass
+
+class Likelihood(object):
     
-    def __init__(spectrum, model_star, priors):
+    def __init__(model_star):
         pass
+    
+    def __call__(spectral_data, *pars):
+        pass
+        #return float
 
-class PriorCollections(object):
+class FitMultiNest(object):
+    
+    def __init__(spectrum, model_star, priors, likelihood=None):
+        
+        self.priors = PriorCollection(priors)
+        if likelihood is None:
+            self.likelihood = Likelihood(model_star)
+        self.data = spectrum
+        
+    def run(self, **kwargs):
+        # run pymultinest on the data object
+        
+    
+
+class PriorCollection(object):
     def __init__(prior_dict):
         #something
         pass
