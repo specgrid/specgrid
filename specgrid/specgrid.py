@@ -14,7 +14,8 @@ from astropy import units as u
 
 from astropy import modeling
 
-from specutils import Spectrum1D
+from . import fix_spectrum1d
+from fix_spectrum1d import Spectrum1D
 
 
 class BaseSpectralGrid(object):
