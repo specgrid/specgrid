@@ -61,12 +61,28 @@ class PoissonPrior(object):
         
     def __call__(self,cube):
         return poisson.ppf(cube,loc=self.m)
-        
+
+class FixedPrior(object):
+    """
+    A fixed value
+    
+    Parameters
+    ----------
+    
+    val: ~float
+        fixed value
+    """
+    
+    def __init__(self, val):
+        self.val = val
+    
+    def __call__(self, cube):
+        return self.val
+    
 #def multinest_spectrum(grid, spectrum, 
 #priors={'teff':UniformPrior(4000, 9000), 'logg':GaussianPrior(3, 0.5), 'feh':FixedPrior(-0.5))
 
 class MultiNest(object):
-    
     def __init__(spectrum, model_star, priors):
         pass
 
