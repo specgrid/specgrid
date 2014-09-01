@@ -1,5 +1,5 @@
 from scipy.stats import norm, poisson
-import pymultinest
+from pylab import plt
 
 class UniformPrior(object):
     """
@@ -87,35 +87,183 @@ class SpectralData(object):
     pass
 
 class Likelihood(object):
+    """
+    A spectrum likelihood object. Initialize with the spectral grid model.
+    Calls will returns the log-likelihood for observing a spectrum given the model
+    parameters and the uncertainty.
     
-    def __init__(model_star):
-        pass
+    Parameters
+    ----------
     
-    def __call__(spectral_data, *pars):
-        pass
-        #return float
+    model_star: ~model from specpgrid
+        model object containing the spectral grid to evaluate
+        
+    
+    """    
+    def __init__(self, model_star):
+        self.model = model_star
+        
+    def __call__(self, data, model_param):
+        # returns the likelihood of observing the data given the model parameters
+        
+        m = self.model.eval(model_param)
+        
+        # log-likelhood for chi-square
+        return (-0.5 * ((data.flux.value - m.flux.value)/data.uncertainty.value)**2).sum()
 
 class FitMultiNest(object):
     
-    def __init__(spectrum, model_star, priors, likelihood=None):
+    def __init__(self,spectrum, model_star, priors, likelihood=None,basename='chains/spectrumFit'):
+        self.spectrum = spectrum    # Spectrum1D object with the data
+        self.model = model_star     # grid of spectra from specgrid
+        self.priors = PriorCollections(priors)  # PriorCollection from the input priors
+        self.n_params = len(priors)             # number of parameters to fit
         
-        self.priors = PriorCollection(priors)
         if likelihood is None:
+            # use the default likelihood for a Spectrum1D object
             self.likelihood = Likelihood(model_star)
-        self.data = spectrum
-        
-    def run(self, **kwargs):
-        # run pymultinest on the data object
+            
+        # variables that will be filled in after the fit has been run
+        self.fit_mean = None    # mean of fitted parameters
+        self.sigma = None      # 1 sigma (68% credible intervales) for fitted parameters
+        self.evidence = None   # the global evidence value for the best fit
         
     
+    def run(self, no_plots=False,**kwargs):
+        # runs pymultinest
+        l = self.likelihood
+        priors = self.priors
+        pymultinest.run(l, priors.priorTransform, self.n_params, outputfiles_basename=self.basename,**kwargs)
+        json.dump(parameters, open(basename+'params.json', 'w')) # save parameter names
+        
+        # analyze the output data
+        a = pymultinest.Analyzer(outputfiles_basename=self.basename, n_params = self.n_params)
+        s = a.get_stats()
+        modes = s['modes'][0]   
+        self.mean = modes['mean']
+        self.sigma = modes['sigma']
+        self.evidence = s['global evidence']
+        
+        if not(no_plots):
+            self.mkplots()
+        
+        
+    def mkplots(self):
+        # run to make plots of the resulting posteriors. Modified from marginal_plots.py
+        # from pymultinest. Produces basename+marg.pdf and basename+marge.png files
+        prefix = self.basename
+        
+        parameters = json.load(file(prefix + 'params.json'))
+        n_params = len(parameters)
+        
+        a = pymultinest.Analyzer(n_params = n_params, outputfiles_basename = prefix)
+        s = a.get_stats()
+        
+        p = pymultinest.PlotMarginal(a)
+        
+        
+        values = a.get_equal_weighted_posterior()
+        assert n_params == len(s['marginals'])
+        modes = s['modes']
+        
+        dim2 = os.environ.get('D', '1' if n_params > 20 else '2') == '2'
+        nbins = 100 if n_params < 3 else 20
+        if dim2:
+        	plt.figure(figsize=(5*n_params, 5*n_params))
+        	for i in range(n_params):
+        		plt.subplot(n_params, n_params, i + 1)
+        		plt.xlabel(parameters[i])
+        	
+        		m = s['marginals'][i]
+        		plt.xlim(m['5sigma'])
+        	
+        		oldax = plt.gca()
+        		x,w,patches = oldax.hist(values[:,i], bins=nbins, edgecolor='grey', color='grey', histtype='stepfilled', alpha=0.2)
+        		oldax.set_ylim(0, x.max())
+        	
+        		newax = plt.gcf().add_axes(oldax.get_position(), sharex=oldax, frameon=False)
+        		p.plot_marginal(i, ls='-', color='blue', linewidth=3)
+        		newax.set_ylim(0, 1)
+        	
+        		ylim = newax.get_ylim()
+        		y = ylim[0] + 0.05*(ylim[1] - ylim[0])
+        		center = m['median']
+        		low1, high1 = m['1sigma']
+        		print center, low1, high1
+        		newax.errorbar(x=center, y=y,
+        			xerr=numpy.transpose([[center - low1, high1 - center]]), 
+        			color='blue', linewidth=2, marker='s')
+        		oldax.set_yticks([])
+        		#newax.set_yticks([])
+        		newax.set_ylabel("Probability")
+        		ylim = oldax.get_ylim()
+        		newax.set_xlim(m['5sigma'])
+        		oldax.set_xlim(m['5sigma'])
+        		#plt.close()
+        	
+        		for j in range(i):
+        			plt.subplot(n_params, n_params, n_params * (j + 1) + i + 1)
+        			p.plot_conditional(i, j, bins=20, cmap = plt.cm.gray_r)
+        			for m in modes:
+        				plt.errorbar(x=m['mean'][i], y=m['mean'][j], xerr=m['sigma'][i], yerr=m['sigma'][j])
+        			plt.xlabel(parameters[i])
+        			plt.ylabel(parameters[j])
+        			plt.xlim([m['mean'][i]-5*m['sigma'][i],m['mean'][i]+5*m['sigma'][i]])
+        			plt.ylim([m['mean'][j]-5*m['sigma'][j],m['mean'][j]+5*m['sigma'][j]])
+        			#plt.savefig('cond_%s_%s.pdf' % (params[i], params[j]), bbox_tight=True)
+        			#plt.close()
+        
+        	plt.savefig(prefix + 'marg.pdf')
+        	plt.savefig(prefix + 'marg.png')
+        	plt.close()
+        else:
+        	from matplotlib.backends.backend_pdf import PdfPages
+        	print '1dimensional only. Set the D environment variable D=2 to force'
+        	print '2d marginal plots.'
+        	pp = PdfPages(prefix + 'marg1d.pdf')
+        	
+        	for i in range(n_params):
+        		plt.figure(figsize=(5, 5))
+        		plt.xlabel(parameters[i])
+        		
+        		m = s['marginals'][i]
+        		plt.xlim(m['5sigma'])
+        	
+        		oldax = plt.gca()
+        		x,w,patches = oldax.hist(values[:,i], bins=20, edgecolor='grey', color='grey', histtype='stepfilled', alpha=0.2)
+        		oldax.set_ylim(0, x.max())
+        	
+        		newax = plt.gcf().add_axes(oldax.get_position(), sharex=oldax, frameon=False)
+        		p.plot_marginal(i, ls='-', color='blue', linewidth=3)
+        		newax.set_ylim(0, 1)
+        	
+        		ylim = newax.get_ylim()
+        		y = ylim[0] + 0.05*(ylim[1] - ylim[0])
+        		center = m['median']
+        		low1, high1 = m['1sigma']
+        		print center, low1, high1
+        		newax.errorbar(x=center, y=y,
+        			xerr=numpy.transpose([[center - low1, high1 - center]]), 
+        			color='blue', linewidth=2, marker='s')
+        		oldax.set_yticks([])
+        		newax.set_ylabel("Probability")
+        		ylim = oldax.get_ylim()
+        		newax.set_xlim(m['5sigma'])
+        		oldax.set_xlim(m['5sigma'])
+        		plt.savefig(pp, format='pdf', bbox_inches='tight')
+        		plt.close()
+        	pp.close()
 
-class PriorCollection(object):
-    def __init__(prior_dict):
-        #something
-        pass
+    
+class PriorCollections(object):
+    
+    def __init__(self, prior_dict):
+        self.priors = prior_dict
         
         
-    def prior(cube, ndim, x):
+    def priorTransform(self,cube, ndim, x):
+        # will be given an array of values from 0 to 1 and transforms it 
+        # according to the prior distribution
         for current_prior, c in zip(self.priors, cube):
             c = current_prior(c)
             
