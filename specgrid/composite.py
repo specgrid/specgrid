@@ -10,7 +10,7 @@ class ModelStar(object):
         self.models_list = models_list
         self.param2model = OrderedDict()
         for model in models_list:
-            self.param2model.update(dict([(param, model)
+            self.param2model.update(OrderedDict([(param, model)
                                           for param in model.parameters]))
         self.parameters = self.param2model.keys()
 
@@ -32,7 +32,7 @@ class ModelStar(object):
             spectrum = model(spectrum)
         return spectrum
     
-    def eval(self, **kwargs):
+    def evaluate(self, **kwargs):
         for kwarg in kwargs:
             current_value = getattr(self, kwarg)
             new_value = kwargs[kwarg]
