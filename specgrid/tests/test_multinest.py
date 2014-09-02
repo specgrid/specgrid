@@ -45,18 +45,7 @@ def test_prior_collections():
     
     nptest.assert_almost_equal(c, [(9000.0+4000.0) * 0.5, 3, -0.5])
 
-class TestSimpleMultinest(object):
-    def setup(self):
-        self.spec_grid = BaseSpectralGrid(data_path('munari_small.h5'))
-        self.model_star = ModelStar([self.spec_grid])
-        self.priors=OrderedDict([('teff', fitmultinest.UniformPrior(4000, 9000)), 
-            ('logg', fitmultinest.GaussianPrior(3, 0.5)), 
-            ('feh', fitmultinest.FixedPrior(-0.5))])
-        self.fit_multinest = fitmultinest.FitMultinest(None, self.priors, self.model_star)
-    
 
-        
-        
 class TestLikelihood(object):
     def setup(self):
         self.spec_grid = BaseSpectralGrid(data_path('munari_small.h5'))
@@ -64,15 +53,43 @@ class TestLikelihood(object):
         self.priors=OrderedDict([('teff', fitmultinest.UniformPrior(4000, 9000)), 
             ('logg', fitmultinest.GaussianPrior(3, 0.5)), 
             ('feh', fitmultinest.FixedPrior(-0.5))])
-        self.likelihood = fitmultinest.Likelihood(self.model_star, self.priors.keys())
-        self.data = self.model_star.evaluate(teff=5780,logg=4.14,feh=0.0)
-        self.data.uncertainty = np.ones(self.data.flux.shape) * self.data.flux.unit
+        spectrum = self.model_star.evaluate(teff=5780,logg=4.14,feh=0.0)
+        spectrum.uncertainty = np.ones(spectrum.flux.shape) * spectrum.flux.unit
+        self.likelihood = fitmultinest.Likelihood(spectrum, self.model_star, self.priors.keys())
         
     def test_likelihood(self):
-        likelihood = self.likelihood(self.data,[5780,4.14,0.0])
+        likelihood = self.likelihood([5780,4.14,0.0], 4,4 )
         nptest.assert_almost_equal(likelihood, 0.0)
         
-        l2 = self.likelihood(self.data,[5781,4.14,0.0])
+        l2 = self.likelihood([5781,4.14,0.0], 4, 4)
         nptest.assert_almost_equal(l2, -14008598406.946743)
 
     
+class TestSimpleMultinest(object):
+    def setup(self):
+        self.spec_grid = BaseSpectralGrid(data_path('munari_small.h5'))
+        self.model_star = ModelStar([self.spec_grid])
+        spectrum = self.model_star.evaluate(teff=5780,logg=4.14,feh=0.0)
+        spectrum.uncertainty = (np.ones(spectrum.flux.shape)+np.sqrt(spectrum.flux.value)) * spectrum.flux.unit
+        self.priors=OrderedDict([('teff', fitmultinest.UniformPrior(5000, 6000)), 
+            ('logg', fitmultinest.GaussianPrior(4.3,0.3)), 
+            ('feh', fitmultinest.FixedPrior(0.05))])
+        self.fit_multinest = fitmultinest.FitMultinest(spectrum, self.priors, self.model_star)
+    
+    def test_multinest(self):
+         # test a run of multinest
+        try:
+            os.mkdir('chains')
+        except IOError:
+            pass
+        
+        self.fit_multinest.run(seed=741761)
+         
+        nptest.assert_almost_equal(self.fit_multinest.mean,[5779.616533128825, 4.135490388533586, 0.04999999999999998])
+         
+        nptest.assert_almost_equal(self.fit_multinest.sigma1,
+        [[5779.607572222019, 5779.625214566039], [4.135304645124507, 4.135682928510821], [0.05, 0.05]])
+         
+        nptest.assert_almost_equal(self.fit_multinest.sigma3, 
+        [[5779.590363406517, 5779.6427247009115], [4.134914605525979, 4.13604688052353], [0.05, 0.05]])
+         
