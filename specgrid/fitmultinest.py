@@ -1,4 +1,5 @@
 from scipy.stats import norm, poisson
+from collections import OrderedDict
 from pylab import plt
 
 class UniformPrior(object):
@@ -100,23 +101,34 @@ class Likelihood(object):
         
     
     """    
-    def __init__(self, model_star):
+    def __init__(self, model_star, parameter_names):
         self.model = model_star
+        self.parameter_names = parameter_names
         
     def __call__(self, data, model_param):
         # returns the likelihood of observing the data given the model parameters
+        param_dict = OrderedDict([(key, value) for key, value in zip(self.parameter_names, model_param)])
         
-        m = self.model.eval(model_param)
+        m = self.model.evaluate(**param_dict)
         
         # log-likelhood for chi-square
-        return (-0.5 * ((data.flux.value - m.flux.value)/data.uncertainty.value)**2).sum()
+        return (-0.5 * ((data.flux.value - m.flux.value) / 
+        data.uncertainty.value)**2).sum()
 
-class FitMultiNest(object):
+class FitMultinest(object):
+    """
+    Fitting Multinest
+    """
     
-    def __init__(self,spectrum, model_star, priors, likelihood=None,basename='chains/spectrumFit'):
+
+    def __init__(self,spectrum, priors, model_star, likelihood=None, 
+    basename='chains/spectrumFit'):
         self.spectrum = spectrum    # Spectrum1D object with the data
         self.model = model_star     # grid of spectra from specgrid
-        self.priors = PriorCollections(priors)  # PriorCollection from the input priors
+        parameter_names = sorted(priors.keys(), key=lambda key: model_star.parameters.index(key))
+        self.priors = PriorCollections(priors, 
+                                parameter_order=model_star.parameters)  
+                                # PriorCollection from the input priors
         self.n_params = len(priors)             # number of parameters to fit
         
         if likelihood is None:
@@ -253,19 +265,20 @@ class FitMultiNest(object):
         		plt.savefig(pp, format='pdf', bbox_inches='tight')
         		plt.close()
         	pp.close()
-
+    
     
 class PriorCollections(object):
     
-    def __init__(self, prior_dict):
+    
+    def __init__(self, prior_dict, parameter_order=[]):
         self.priors = prior_dict
         
-        
-    def priorTransform(self,cube, ndim, x):
+    def prior_transform(self, cube, ndim, nparam):
         # will be given an array of values from 0 to 1 and transforms it 
         # according to the prior distribution
-        for current_prior, c in zip(self.priors, cube):
-            c = current_prior(c)
-            
-        #change the cube
+        
+        for i in xrange(len(cube)):
+            cube[i] = self.priors.values()[i](cube[i])
+
+        
         
