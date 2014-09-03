@@ -5,6 +5,12 @@ import pymultinest
 import json
 import os
 import numpy as np
+from contextlib import contextmanager
+import threading
+import sys
+import time
+
+stdout_lock = threading.Lock()
 
 class UniformPrior(object):
     """
@@ -84,12 +90,41 @@ class FixedPrior(object):
     
     def __call__(self, cube):
         return self.val
-    
-#def multinest_spectrum(grid, spectrum, 
-#priors={'teff':UniformPrior(4000, 9000), 'logg':GaussianPrior(3, 0.5), 'feh':FixedPrior(-0.5))
 
-class SpectralData(object):
-    pass
+@contextmanager
+def set_stdout_parent(parent):
+    """a context manager for setting a particular parent for sys.stdout
+
+    the parent determines the destination cell of output
+    """
+    save_parent = sys.stdout.parent_header
+    with stdout_lock:
+        sys.stdout.parent_header = parent
+        try:
+            yield
+        finally:
+            # the flush is important, because that's when the parent_header actually has its effect
+            sys.stdout.flush()
+            sys.stdout.parent_header = save_parent
+
+class ProgressPrinter(pymultinest.ProgressWatcher):
+    """
+        Continuously writes out the number of live and rejected points.
+    """
+    def run(self):
+        import time
+        thread_parent = sys.stdout.parent_header
+        while self.running:
+            time.sleep(self.interval_ms / 1000.)
+            if not self.running:
+                break
+            try:
+                with set_stdout_parent(thread_parent):
+                    print(('rejected points: ', len(open(self.rejected, 'r').readlines())))
+                    print(('alive points: ', len(open(self.live, 'r').readlines())))
+            except Exception as e:
+                print(e)
+
 
 class Likelihood(object):
     """
@@ -151,6 +186,7 @@ class FitMultinest(object):
         self.spectrum = spectrum    # Spectrum1D object with the data
         self.model = model_star     # grid of spectra from specgrid
         self.parameter_names = sorted(priors.keys(), key=lambda key: model_star.parameters.index(key))
+        priors = OrderedDict([(key, priors[key]) for key in self.parameter_names])
         self.priors = PriorCollections(priors, 
                                 parameter_order=model_star.parameters)  
                                 # PriorCollection from the input priors
@@ -169,12 +205,16 @@ class FitMultinest(object):
         self.analyzer = None   # store the results of the pymultinest analyzer
         
     
-    def run(self, no_plots=False,resume=False, verbose=False,**kwargs):
+    def run(self, no_plots=False, resume=False, verbose=False, **kwargs):
         # runs pymultinest
-        l = self.likelihood
-        priors = self.priors
-        pymultinest.run(l, priors.prior_transform, self.n_params, outputfiles_basename=self.basename,
-        resume=resume, verbose = verbose, init_MPI= True, **kwargs)
+#        progress = ProgressPrinter(
+#            n_params=self.n_params,
+#            outputfiles_basename=self.basename)
+
+#        progress.start()
+        pymultinest.run(self.likelihood, self.priors.prior_transform,
+                        self.n_params, outputfiles_basename=self.basename,
+                        resume=resume, verbose = verbose, **kwargs)
         json.dump(self.parameter_names, open(self.basename+'params.json', 'w')) # save parameter names
         
         # analyze the output data
