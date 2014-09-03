@@ -7,9 +7,7 @@ from numpy.polynomial import Polynomial
 
 import astropy.units as u
 import astropy.constants as const
-
-from specutils import Spectrum1D
-
+from fix_spectrum1d import Spectrum1D
 
 class RotationalBroadening(object):
     vrot = 1. * u.km / u.s
@@ -185,7 +183,7 @@ class Normalize(object):
 
     def __init__(self, observed, npol):
         if getattr(observed, 'uncertainty', None) is None:
-            self.uncertainty = 1.
+            self.uncertainty = 1. * observed.flux.unit
         else:
             self.uncertainty = getattr(observed.uncertainty, 'array',
                                        observed.uncertainty)
@@ -217,8 +215,7 @@ class Normalize(object):
                                      window=self.window.value)
         return Spectrum1D.from_array(
             model.wavelength.value,
-            fit, unit=self.flux_unit,
-            dispersion_unit=model.wavelength.unit)
+            fit)
 
 
 class NormalizeParts(object):
@@ -256,10 +253,8 @@ class NormalizeParts(object):
     @staticmethod
     def spectrum_1d_getitem(observed, part):
         observed_part = Spectrum1D.from_array(
-            observed.wavelength.value[part],
-            observed.flux[part],
-            unit=observed.unit,
-            dispersion_unit=observed.wavelength.unit)
+            observed.wavelength[part],
+            observed.flux[part])
         if getattr(observed, 'uncertainty', None) is not None:
             observed_part.uncertainty = getattr(observed.uncertainty, 'array',
                                                 observed.uncertainty)[part]
