@@ -199,23 +199,27 @@ class Normalize(object):
 
     def __call__(self, model):
         # V[:,0]=mfi/e, Vp[:,1]=mfi/e*w, .., Vp[:,npol]=mfi/e*w**npol
+        
         V = self._Vp * (model.flux / self.uncertainty)[:, np.newaxis]
         # normalizes different powers
         scl = np.sqrt((V*V).sum(0))
-        sol, resids, rank, s = np.linalg.lstsq(V/scl, self.signal_to_noise,
-                                               self._rcond)
-        sol = (sol.T / scl).T
-        if rank != self._Vp.shape[-1] - 1:
-            msg = "The fit may be poorly conditioned"
-            warnings.warn(msg)
+        if np.isfinite(scl[0].value):  # check for validity before evaluating
+            sol, resids, rank, s = np.linalg.lstsq(V/scl, self.signal_to_noise,
+                                                   self._rcond)
+            sol = (sol.T / scl).T
+            if rank != self._Vp.shape[-1] - 1:
+                msg = "The fit may be poorly conditioned"
+                warnings.warn(msg)
 
-        fit = np.dot(V, sol) * self.uncertainty
-        # keep coefficients in case the outside wants to look at it
-        self.polynomial = Polynomial(sol, domain=self.domain.value,
-                                     window=self.window.value)
-        return Spectrum1D.from_array(
-            model.wavelength.value,
-            fit)
+            fit = np.dot(V, sol) * self.uncertainty
+            # keep coefficients in case the outside wants to look at it
+            self.polynomial = Polynomial(sol, domain=self.domain.value,
+                                         window=self.window.value)
+            return Spectrum1D.from_array(
+                model.wavelength.value,
+                fit)
+        else:
+            return model
 
 
 class NormalizeParts(object):
