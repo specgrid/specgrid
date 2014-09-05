@@ -276,7 +276,7 @@ class FitMultinest(object):
         dim2 = os.environ.get('D', '1' if n_params > 20 else '2') == '2'
         nbins = 100 if n_params < 3 else 20
         if dim2:
-        	plt.figure(figsize=(5*n_params, 5*n_params))
+        	plt.figure(figsize=(5.1*n_params, 5*n_params))
         	for i in range(n_params):
         		plt.subplot(n_params, n_params, i + 1)
         		plt.xlabel(parameters[i])
@@ -313,13 +313,22 @@ class FitMultinest(object):
         			p.plot_conditional(i, j, bins=20, cmap = plt.cm.gray_r)
         			for m in modes:
         				plt.errorbar(x=m['mean'][i], y=m['mean'][j], xerr=m['sigma'][i], yerr=m['sigma'][j])
-        			plt.xlabel(parameters[i])
-        			plt.ylabel(parameters[j])
+                                ax = plt.gca()
+                                if j == i-1:
+                                    plt.xlabel(parameters[i])
+                                    plt.ylabel(parameters[j])
+                                    [l.set_rotation(45) for l in ax.get_xticklabels()]
+                                else:
+                                    ax.set_xticklabels([])
+                                    ax.set_yticklabels([])
+                                    
+                                    
         			plt.xlim([m['mean'][i]-5*m['sigma'][i],m['mean'][i]+5*m['sigma'][i]])
         			plt.ylim([m['mean'][j]-5*m['sigma'][j],m['mean'][j]+5*m['sigma'][j]])
         			#plt.savefig('cond_%s_%s.pdf' % (params[i], params[j]), bbox_tight=True)
         			#plt.close()
-        
+
+                plt.tight_layout()
         	plt.savefig(prefix + 'marg.pdf')
         	plt.savefig(prefix + 'marg.png')
         	plt.close()
