@@ -82,6 +82,8 @@ class TestSimpleMultinest(object):
             os.mkdir('chains')
         except IOError:
             pass
+        except OSError:
+            pass
         
         self.fit_multinest.run(seed=741761)
          
