@@ -52,10 +52,10 @@ class ODFSelect(object):
         else:
             return self.fname[0]
 
-def read_index2df(gridname, conn):
+def read_index2df(gridname, sql_stmt, conn):
 
     sql_read_stmt = 'select id, teff, logg, feh, vrot, k, alpha, odftype, fname from munari where vrot=0'
-    index = pd.read_sql(sql_read_stmt, conn)
+    index = pd.read_sql(sql_stmt, conn)
     index['fname'] = index['fname'].astype(str)
     index['odftype'] = index['odftype'].astype(str)
     conn.close()
@@ -63,23 +63,3 @@ def read_index2df(gridname, conn):
 
 
 
-if __name__ == '__main__':
-   gridname = 'munari'
-   gridhdf5_fname = 'munari_small.h5'
-   wavelength = np.fromfile(os.path.join(gridname, 'wave.npmap'), dtype=np.float64) * u.angstrom
-   with sqlite3.connect(os.path.join(gridname, 'index.db3')) as conn:
-        conn.create_aggregate('odf_select', 2, ODFSelect)
-        index = pd.read_sql(sql_stmt, conn)
-        index[['teff', 'logg', 'feh']].to_hdf(gridhdf5_fname, 'index', mode='w')
-        flux0 = np.fromfile(os.path.join(gridname, 'data', index.fname[0]), dtype=np.float64)
-
-        fluxes = np.empty((len(index.fname), len(flux0)))
-        for i, fname in enumerate(index['fname']):
-            print '{0} of {1}'.format(i, len(index.fname))
-            fluxes[i] = np.fromfile(os.path.join(gridname, 'data', fname), dtype=np.float64)
-
-        with h5py.File(gridhdf5_fname, 'a') as fh:
-            fh['fluxes'] = fluxes
-            fh['fluxes'].attrs['wavelength'] = wavelength.value
-            fh['fluxes'].attrs['wavelength.unit'] = str(wavelength.unit)
-            fh['fluxes'].attrs['flux.unit'] = 'erg / (cm^2 s Angstrom)'
