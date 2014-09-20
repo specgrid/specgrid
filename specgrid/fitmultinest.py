@@ -268,51 +268,55 @@ class FitMultinest(object):
         
         p = pymultinest.PlotMarginal(a)
         
-        
-        values = a.get_equal_weighted_posterior()
+        try:
+            values = a.get_equal_weighted_posterior()
+        except IOError as e:
+            print 'Unable to open: %s' % e
+            return
+            
         assert n_params == len(s['marginals'])
         modes = s['modes']
-        
+
         dim2 = os.environ.get('D', '1' if n_params > 20 else '2') == '2'
         nbins = 100 if n_params < 3 else 20
         if dim2:
-        	plt.figure(figsize=(5.1*n_params, 5*n_params))
-        	for i in range(n_params):
-        		plt.subplot(n_params, n_params, i + 1)
-        		plt.xlabel(parameters[i])
-        	
-        		m = s['marginals'][i]
-        		plt.xlim(m['5sigma'])
-        	
-        		oldax = plt.gca()
-        		x,w,patches = oldax.hist(values[:,i], bins=nbins, edgecolor='grey', color='grey', histtype='stepfilled', alpha=0.2)
-        		oldax.set_ylim(0, x.max())
-        	
-        		newax = plt.gcf().add_axes(oldax.get_position(), sharex=oldax, frameon=False)
-        		p.plot_marginal(i, ls='-', color='blue', linewidth=3)
-        		newax.set_ylim(0, 1)
-        	
-        		ylim = newax.get_ylim()
-        		y = ylim[0] + 0.05*(ylim[1] - ylim[0])
-        		center = m['median']
-        		low1, high1 = m['1sigma']
-        		print center, low1, high1
-        		newax.errorbar(x=center, y=y,
-        			xerr=np.transpose([[center - low1, high1 - center]]), 
-        			color='blue', linewidth=2, marker='s')
-        		oldax.set_yticks([])
-        		#newax.set_yticks([])
-        		newax.set_ylabel("Probability")
-        		ylim = oldax.get_ylim()
-        		newax.set_xlim(m['5sigma'])
-        		oldax.set_xlim(m['5sigma'])
-        		#plt.close()
-        	
-        		for j in range(i):
-        			plt.subplot(n_params, n_params, n_params * (j + 1) + i + 1)
-        			p.plot_conditional(i, j, bins=20, cmap = plt.cm.gray_r)
-        			for m in modes:
-        				plt.errorbar(x=m['mean'][i], y=m['mean'][j], xerr=m['sigma'][i], yerr=m['sigma'][j])
+                plt.figure(figsize=(5.1*n_params, 5*n_params))
+                for i in range(n_params):
+                        plt.subplot(n_params, n_params, i + 1)
+                        plt.xlabel(parameters[i])
+
+                        m = s['marginals'][i]
+                        plt.xlim(m['5sigma'])
+
+                        oldax = plt.gca()
+                        x,w,patches = oldax.hist(values[:,i], bins=nbins, edgecolor='grey', color='grey', histtype='stepfilled', alpha=0.2)
+                        oldax.set_ylim(0, x.max())
+
+                        newax = plt.gcf().add_axes(oldax.get_position(), sharex=oldax, frameon=False)
+                        p.plot_marginal(i, ls='-', color='blue', linewidth=3)
+                        newax.set_ylim(0, 1)
+
+                        ylim = newax.get_ylim()
+                        y = ylim[0] + 0.05*(ylim[1] - ylim[0])
+                        center = m['median']
+                        low1, high1 = m['1sigma']
+                        print center, low1, high1
+                        newax.errorbar(x=center, y=y,
+                                xerr=np.transpose([[center - low1, high1 - center]]), 
+                                color='blue', linewidth=2, marker='s')
+                        oldax.set_yticks([])
+                        #newax.set_yticks([])
+                        newax.set_ylabel("Probability")
+                        ylim = oldax.get_ylim()
+                        newax.set_xlim(m['5sigma'])
+                        oldax.set_xlim(m['5sigma'])
+                        #plt.close()
+
+                        for j in range(i):
+                                plt.subplot(n_params, n_params, n_params * (j + 1) + i + 1)
+                                p.plot_conditional(i, j, bins=20, cmap = plt.cm.gray_r)
+                                for m in modes:
+                                        plt.errorbar(x=m['mean'][i], y=m['mean'][j], xerr=m['sigma'][i], yerr=m['sigma'][j])
                                 ax = plt.gca()
                                 if j == i-1:
                                     plt.xlabel(parameters[i])
@@ -321,17 +325,17 @@ class FitMultinest(object):
                                 else:
                                     ax.set_xticklabels([])
                                     ax.set_yticklabels([])
-                                    
-                                    
-        			plt.xlim([m['mean'][i]-5*m['sigma'][i],m['mean'][i]+5*m['sigma'][i]])
-        			plt.ylim([m['mean'][j]-5*m['sigma'][j],m['mean'][j]+5*m['sigma'][j]])
-        			#plt.savefig('cond_%s_%s.pdf' % (params[i], params[j]), bbox_tight=True)
-        			#plt.close()
+
+
+                                plt.xlim([m['mean'][i]-5*m['sigma'][i],m['mean'][i]+5*m['sigma'][i]])
+                                plt.ylim([m['mean'][j]-5*m['sigma'][j],m['mean'][j]+5*m['sigma'][j]])
+                                #plt.savefig('cond_%s_%s.pdf' % (params[i], params[j]), bbox_tight=True)
+                                #plt.close()
 
                 plt.tight_layout()
-        	plt.savefig(prefix + 'marg.pdf')
-        	plt.savefig(prefix + 'marg.png')
-        	plt.close()
+                plt.savefig(prefix + 'marg.pdf')
+                plt.savefig(prefix + 'marg.png')
+                plt.close()
         else:
         	from matplotlib.backends.backend_pdf import PdfPages
         	print '1dimensional only. Set the D environment variable D=2 to force'
