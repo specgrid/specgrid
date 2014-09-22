@@ -34,7 +34,8 @@ class BaseSpectralGrid(object):
                  interpolator=interpolate.LinearNDInterpolator):
         super(BaseSpectralGrid, self).__init__()
         if not os.path.exists(grid_hdf5_fname):
-            raise ValueError('{0} does not exists'.format(grid_hdf5_fname))
+            raise IOError('{0} does not exists'.format(grid_hdf5_fname))
+
         self.grid_hdf5_fname = grid_hdf5_fname
         self.index = pd.read_hdf(self.grid_hdf5_fname, 'index')
 

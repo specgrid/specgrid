@@ -1,9 +1,6 @@
 import specutils
-from astropy import units as u
 
 class Spectrum1D(specutils.Spectrum1D):
-
-
 
     def uncertainty_getter(self):
         return self._uncertainty
