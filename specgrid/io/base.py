@@ -8,16 +8,18 @@ import h5py
 
 
 
-def read_indexdb_to_dataframe(gridname, sql_stmt, indexdb_fname='index.db3'):
+def read_indexdb_to_dataframe(path_to_grid, sql_stmt, indexdb_fname='index.db3'):
     """
     Reading the index db to a pandas DataFrame
 
-    :param gridname:
+    :param path_to_grid:
     :param sql_stmt:
     :param indexdb_fname:
     :return:
     """
-    indexdb_path = os.path.join(gridname, indexdb_fname)
+    indexdb_path = os.path.join(path_to_grid, indexdb_fname)
+
+    print "Reading database index from {0}".format(indexdb_path)
     if not os.path.exists(indexdb_path):
         raise IOError('The index database {0} does not exist'.format(
             indexdb_path))
@@ -36,7 +38,7 @@ def read_indexdb_to_dataframe(gridname, sql_stmt, indexdb_fname='index.db3'):
     return indexdf
 
 
-def read_spectra(gridname, indexdf):
+def read_spectra(gridname, indexdf, process_plugins=[]):
     grid_config = ConfigParser.ConfigParser()
     grid_config.read(os.path.join(gridname, 'config.ini'))
 
@@ -63,7 +65,7 @@ def read_spectra(gridname, indexdf):
 
 
 
-def make_hdf5(gridname, sql_stmt, h5_fname):
+def make_hdf5(gridname, sql_stmt, h5_fname, ignore_columns=[]):
     """
     Making an HDF5 File from a databased grid
 
@@ -83,7 +85,7 @@ def make_hdf5(gridname, sql_stmt, h5_fname):
 
     data_columns = []
     for column in index_df.columns:
-        if column == 'fname':
+        if column == 'fname' or column in ignore_columns:
             continue
         if len(index_df[column].unique()) > 1:
             data_columns.append(column)
