@@ -52,6 +52,7 @@ class BaseSpectralGrid(object):
             self.fluxes = np.array(h5file['fluxes'])
 
         self.interpolate_grid = interpolator(self.index.values, self.fluxes)
+        self.interpolator = interpolator
 
     def __call__(self):
         return self.eval(*[getattr(self, item) for item in self.parameters])
