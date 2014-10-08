@@ -41,5 +41,22 @@ class ModelStar(object):
             setattr(self, kwarg, new_value)
         return self()
 
-def assemble_model_star(specgrid, spectrum=None, params=None):
-    pass
+def assemble_model_star(spectral_grid, spectrum=None, normalize_pol=None, **kwargs):
+
+    for key in kwargs:
+        pass
+
+
+    convolve = InstrumentConvolve(R=self.spectral_parameters['R'])
+    #rot = RotationalBroadening()
+    doppler = DopplerShift()
+    interp = Interpolate(self.to_spectrum_1d())
+    one_chip_size = len(self.table['x'])
+    parts = [slice(None, one_chip_size),
+             slice(one_chip_size, 2*one_chip_size),
+             slice(2*one_chip_size, None)]
+    norm = NormalizeParts(self.to_spectrum_1d(), parts=parts,
+                          npol=self.spectral_parameters['npol'])
+
+    model_star = ModelStar([spectral_grid, doppler, convolve, interp, norm])
+

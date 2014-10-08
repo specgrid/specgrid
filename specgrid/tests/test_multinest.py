@@ -1,6 +1,8 @@
 import numpy.testing as nptest
 import numpy as np
 import os
+
+import pytest
 from collections import OrderedDict
 
 from specgrid import fitmultinest
@@ -9,6 +11,15 @@ from specgrid.multinest import priors
 from specgrid.fix_spectrum1d import Spectrum1D
 from specgrid.base import BaseSpectralGrid
 from specgrid.composite import ModelStar
+
+try:
+    import pymultinest
+except ImportError:
+    pymultinest_available = False
+else:
+    pymultinest_available = True
+
+pytestmark = pytest.mark.skipif(not pymultinest_available)
 
 import specgrid
 
