@@ -12,7 +12,16 @@ import astropy.constants as const
 from fix_spectrum1d import Spectrum1D
 
 class RotationalBroadening(object):
-    vrot = 1. * u.km / u.s
+
+    @property
+    def vrot(self):
+        return getattr(self, '_vrot', 1. * u.km / u.s)
+
+    @vrot.setter
+    def vrot(self, value):
+        self._vrot = u.Quantity(value, u.km / u.s)
+
+
     resolution = (20 * u.km / u.s / const.c).to(1)
     limb_darkening = 0.6
     parameters = ['vrot']
@@ -49,7 +58,14 @@ class RotationalBroadening(object):
 
 class DopplerShift(object):
 
-    vrad = 0. * u.km / u.s
+    @property
+    def vrad(self):
+        return getattr(self, '_vrad', 0. * u.km / u.s)
+
+    @vrad.setter
+    def vrad(self, value):
+        self._vrad = u.Quantity(value, u.km / u.s)
+
     parameters = ['vrad']
 
     def __call__(self, spectrum):
@@ -73,7 +89,16 @@ class InstrumentConvolve(object):
         number of pixels per resolution element (default=2.)
 
     """
-    R = 0 * u.Unit(1)
+
+    @property
+    def R(self):
+        return getattr(self, '_R', 0. * u.km / u.s)
+
+    @R.setter
+    def R(self, value):
+        self._R = u.Quantity(value, u.Unit(1))
+
+
     parameters = ['R']
 
     def __init__(self, R, sampling=2.):
