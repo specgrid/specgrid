@@ -62,16 +62,16 @@ install:
     # CONDA
     - conda create --yes -n test -c astropy-ci-extras python=$TRAVIS_PYTHON_VERSION
     - source activate test
-    - conda install --yes numpy=$NUMPY_VERSION scipy h5py pandas cython astropy
-    - pip install pip --upgrade
     - pip install git+https://github.com/astropy/specutils
     # CORE DEPENDENCIES
-    - if [[ $SETUP_CMD != egg_info ]]; then $CONDA_INSTALL numpy=$NUMPY_VERSION pytest pip Cython; fi
+    - if [[ $SETUP_CMD != egg_info ]]; then $CONDA_INSTALL numpy=$NUMPY_VERSION pytest pip Cython scipy pandas ; fi
     - if [[ $SETUP_CMD != egg_info ]]; then $PIP_INSTALL pytest-xdist; fi
 
     # ASTROPY
     - if [[ $SETUP_CMD != egg_info ]] && [[ $ASTROPY_VERSION == development ]]; then $PIP_INSTALL git+http://github.com/astropy/astropy.git#egg=astropy; fi
     - if [[ $SETUP_CMD != egg_info ]] && [[ $ASTROPY_VERSION == stable ]]; then $CONDA_INSTALL numpy=$NUMPY_VERSION astropy; fi
+
+    - $PIP_INSTALL git+http://github.com/astropy/specutils
 
     # OPTIONAL DEPENDENCIES
     # Here you can add any dependencies your package may have. You can use
