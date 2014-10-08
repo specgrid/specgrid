@@ -47,29 +47,19 @@ def assemble_model_star(spectral_grid, spectrum=None, normalize_pol=None, plugin
 
     stellar_physics_plugins = []
     instrument_physics_plugins = []
-    for plugin_name in plugins:
+
+    for plugin_name in plugin_names:
         if plugin_name in plugins.stellar_physics_plugins:
-            current_plugin = plugins.stellar_physics_plugins[key]
-            setattr(current_plugin, key, kwargs[key])
-            stellar_physics_plugins.append(current_plugin)
-        if plugin_name in plugins.stellar_physics_plugins:
-            current_plugin = plugins.stellar_physics_plugins[key]
-            setattr(current_plugin, key, kwargs[key])
+            current_plugin = plugins.stellar_physics_plugins[plugin_name]
             stellar_physics_plugins.append(current_plugin)
 
+        elif plugin_name in plugins.instrument_physics_plugins:
+            current_plugin = plugins.stellar_physics_plugins[plugin_name]
 
+            instrument_physics_plugins.append(current_plugin)
 
+    model_star = ModelStar([spectral_grid] + stellar_physics_plugins
+                           + instrument_physics_plugins)
 
-    convolve = InstrumentConvolve(R=self.spectral_parameters['R'])
-    #rot = RotationalBroadening()
-    doppler = DopplerShift()
-    interp = Interpolate(self.to_spectrum_1d())
-    one_chip_size = len(self.table['x'])
-    parts = [slice(None, one_chip_size),
-             slice(one_chip_size, 2*one_chip_size),
-             slice(2*one_chip_size, None)]
-    norm = NormalizeParts(self.to_spectrum_1d(), parts=parts,
-                          npol=self.spectral_parameters['npol'])
-
-    model_star = ModelStar([spectral_grid, doppler, convolve, interp, norm])
+    return model_star
 
