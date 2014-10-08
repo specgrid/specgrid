@@ -45,8 +45,11 @@ class BaseSpectralGrid(object):
         self.interpolator = interpolator
 
     def __call__(self):
-        return self.eval(*[getattr(self, item) for item in self.parameters])
+        return Spectrum1D.from_array(self.wavelength, self._interpolate_flux())
 
+    def _interpolate_flux(self):
+        parameter_values = [getattr(self, item) for item in self.parameters]
+        return self.interpolate_grid(parameter_values)[0] * self.flux_unit
 
     def _load_index(self, grid_hdf5_fname):
         """
@@ -78,7 +81,7 @@ class BaseSpectralGrid(object):
 
         """
 
-        with h5py.File(self.grid_hdf5_fname, 'r') as h5file:
+        with h5py.File(grid_hdf5_fname, 'r') as h5file:
             wavelength_unit = u.Unit(h5file['fluxes'].attrs['wavelength.unit'])
             self.wavelength = h5file['fluxes'].attrs['wavelength'] * \
                               wavelength_unit
@@ -95,47 +98,7 @@ class BaseSpectralGrid(object):
                 raise ValueError('{0} not a parameter of the current '
                                  'spectral grid (parameters are {1})'.format(
                     key, ','.join(self.parameters)))
+            setattr(self, key, kwargs[key])
 
         return self.__call__()
 
-
-class MunariGrid(BaseSpectralGrid):
-
-    teff = 5780.
-    logg = 4.4
-    feh = 0.0
-
-    parameters = ['teff', 'logg', 'feh']
-
-    def __init__(self, grid_hdf5_fname,
-                 interpolator = interpolate.LinearNDInterpolator,
-                 query_string='teff > 0'):
-
-        super(MunariGrid, self).__init__(grid_hdf5_fname, interpolator)
-        self.load_dataset(query_string)
-
-
-    def __call__(self):
-        return self.eval(self.teff, self.logg, self.feh)
-
-
-    def eval(self, teff, logg, feh):
-        """
-        Interpolating on the grid to the necessary parameters
-
-        Parameters
-        ----------
-
-        teff: float
-            effective temperature
-        logg: float
-            base ten logarithm of surface gravity in cgs
-        feh: float
-            [Fe/H]
-
-        """
-        flux = self.interpolate_grid(teff, logg, feh)
-        return Spectrum1D.from_array(self.wavelength,
-                                     flux,
-                                     dispersion_unit=u.angstrom,
-                                     unit=u.Unit('erg/ (cm2 s Angstrom)'))

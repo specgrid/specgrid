@@ -1,3 +1,6 @@
+from scipy import stats
+
+
 class UniformPrior(object):
     """
     A Uniform distribution prior
@@ -39,7 +42,7 @@ class GaussianPrior(object):
         self.sigma = sigma
 
     def __call__(self, cube):
-        return norm.ppf(cube,scale=self.sigma,loc=self.m)
+        return stats.norm.ppf(cube,scale=self.sigma,loc=self.m)
 
 
 class PoissonPrior(object):
