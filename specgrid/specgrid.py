@@ -14,7 +14,6 @@ from astropy import units as u
 
 from astropy import modeling
 
-from . import fix_spectrum1d
 from fix_spectrum1d import Spectrum1D
 
 
