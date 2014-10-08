@@ -101,7 +101,7 @@ class InstrumentConvolve(object):
 
     parameters = ['R']
 
-    def __init__(self, R, sampling=2.):
+    def __init__(self, R=1000., sampling=2.):
         self.R = u.Quantity(R, u.Unit(1))
 
         self.sampling = float(sampling)
@@ -325,9 +325,9 @@ def observe(model, wgrid, slit, seeing, overresolve, offset=0.):
     return Table([wgrid, mconv], names=('w','flux'), meta={'filt': filt})
 
 
-stellar_physics_plugins = OrderedDict([('rotation', RotationalBroadening),
+astrophysics_plugins = OrderedDict([('rotation', RotationalBroadening),
                                        ('doppler', DopplerShift),
                                        ('ccm89', CCM89Extinction),])
 
-instrument_physics_plugins = OrderedDict([
-    ('spec_resolution', InstrumentConvolve)])
+instrument_plugins = OrderedDict([
+    ('resolution', InstrumentConvolve)])

@@ -5,6 +5,10 @@ from specgrid import plugins
 
 
 class ModelStar(object):
+    """
+    A model star combines a normal spectral grid (~specgrid.SpectralGrid) with a
+    number of plugins that allow to add further physical
+    """
 
     param2model = OrderedDict()
 
@@ -44,22 +48,47 @@ class ModelStar(object):
         return self()
 
 def assemble_model_star(spectral_grid, spectrum=None, normalize_pol=None, plugin_names=[]):
+    """
 
-    stellar_physics_plugins = []
-    instrument_physics_plugins = []
+    Parameters
+    ----------
+
+    :param spectral_grid:
+    :param spectrum:
+    :param normalize_pol:
+    :param plugin_names:
+
+    Returns
+    -------
+        : ~ModelStar
+
+    {0}
+    """
+
+    astrophysics_plugins = []
+    instrument_plugins = []
 
     for plugin_name in plugin_names:
-        if plugin_name in plugins.stellar_physics_plugins:
-            current_plugin = plugins.stellar_physics_plugins[plugin_name]
-            stellar_physics_plugins.append(current_plugin)
+        if plugin_name in plugins.astrophysics_plugins:
+            current_plugin = plugins.astrophysics_plugins[plugin_name]()
+            astrophysics_plugins.append(current_plugin)
 
-        elif plugin_name in plugins.instrument_physics_plugins:
-            current_plugin = plugins.stellar_physics_plugins[plugin_name]
+        elif plugin_name in plugins.instrument_plugins:
+            current_plugin = plugins.instrument_plugins[plugin_name]()
 
-            instrument_physics_plugins.append(current_plugin)
+            instrument_plugins.append(current_plugin)
 
-    model_star = ModelStar([spectral_grid] + stellar_physics_plugins
-                           + instrument_physics_plugins)
+    astrophysics_plugins = sorted(
+        astrophysics_plugins,
+        key=lambda item: plugins.astrophysics_plugins.values().index(item.__class__))
+
+    instrument_plugins = sorted(
+        instrument_plugins,
+        key=lambda item: plugins.instrument_plugins.values().index(item.__class__))
+
+    model_star = ModelStar([spectral_grid] + astrophysics_plugins
+                           + instrument_plugins)
 
     return model_star
 
+assemble_model_star.__doc__ = assemble_model_star.__doc__.format('lkjflkjsdflksdjfldskjfldksj')

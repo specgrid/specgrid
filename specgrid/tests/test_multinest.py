@@ -7,10 +7,10 @@ from collections import OrderedDict
 
 
 
-from specgrid.multinest import priors
+from specgrid.fitting.multinest import priors
 from specgrid.fix_spectrum1d import Spectrum1D
 from specgrid.base import SpectralGrid
-from specgrid.composite import ModelStar
+from specgrid.model_star import ModelStar
 
 try:
     import pymultinest
