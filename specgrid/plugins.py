@@ -325,7 +325,9 @@ def observe(model, wgrid, slit, seeing, overresolve, offset=0.):
     return Table([wgrid, mconv], names=('w','flux'), meta={'filt': filt})
 
 
-stellar_physics_plugins = OrderedDict([('vrot', RotationalBroadening),
-                                       ('vrad', DopplerShift),
+stellar_physics_plugins = OrderedDict([('rotation', RotationalBroadening),
+                                       ('doppler', DopplerShift),
                                        ('ccm89', CCM89Extinction),])
 
+instrument_physics_plugins = OrderedDict([
+    ('spec_resolution', InstrumentConvolve)])
