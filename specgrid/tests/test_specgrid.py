@@ -1,6 +1,6 @@
 import os
 import specgrid
-from specgrid import BaseSpectralGrid
+from specgrid import SpectralGrid
 import numpy.testing as nptesting
 import numpy as np
 import h5py
@@ -17,10 +17,10 @@ def h5_test_data():
 
 class TestSimpleSpectralGrid():
     def setup(self):
-        self.spec_grid = BaseSpectralGrid(data_path('munari_small.h5'))
+        self.spec_grid = SpectralGrid(data_path('munari_small.h5'))
 
     def test_default_call(self):
-        spec_grid = BaseSpectralGrid(data_path('munari_small.h5'))
+        spec_grid = SpectralGrid(data_path('munari_small.h5'))
         default_interp_spec = spec_grid()
         nptesting.assert_allclose(default_interp_spec.wavelength,
                                   spec_grid.wavelength)

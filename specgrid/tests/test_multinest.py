@@ -9,7 +9,7 @@ from collections import OrderedDict
 
 from specgrid.multinest import priors
 from specgrid.fix_spectrum1d import Spectrum1D
-from specgrid.base import BaseSpectralGrid
+from specgrid.base import SpectralGrid
 from specgrid.composite import ModelStar
 
 try:
@@ -19,7 +19,7 @@ except ImportError:
 else:
     pymultinest_available = True
     from specgrid import fitmultinest
-    
+
 pytestmark = pytest.mark.skipif(not pymultinest_available,
                                 reason='pymultinest not available')
 
@@ -65,7 +65,7 @@ def test_prior_collections():
 
 class TestLikelihood(object):
     def setup(self):
-        self.spec_grid = BaseSpectralGrid(data_path('munari_small.h5'))
+        self.spec_grid = SpectralGrid(data_path('munari_small.h5'))
         self.model_star = ModelStar([self.spec_grid])
         self.priors=OrderedDict([('teff', priors.UniformPrior(4000, 9000)),
             ('logg', priors.GaussianPrior(3, 0.5)),
@@ -84,7 +84,7 @@ class TestLikelihood(object):
     
 class TestSimpleMultinest(object):
     def setup(self):
-        self.spec_grid = BaseSpectralGrid(data_path('munari_small.h5'))
+        self.spec_grid = SpectralGrid(data_path('munari_small.h5'))
         self.model_star = ModelStar([self.spec_grid])
         spectrum = self.model_star.evaluate(teff=5780,logg=4.14,feh=0.0)
         spectrum.uncertainty = (np.ones(spectrum.flux.shape)+np.sqrt(spectrum.flux.value)) * spectrum.flux.unit

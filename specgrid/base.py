@@ -17,9 +17,9 @@ from astropy import modeling
 from fix_spectrum1d import Spectrum1D
 
 
-class BaseSpectralGrid(object):
+class SpectralGrid(object):
     """
-    A BaseSpectralGrid interpolation class. Can serve as a model maybe
+    A SpectralGrid interpolation class. Can serve as a model maybe
 
     Parameters
     ----------
@@ -32,7 +32,7 @@ class BaseSpectralGrid(object):
     def __init__(self, grid_hdf5_fname,
                  interpolator=interpolate.LinearNDInterpolator):
 
-        super(BaseSpectralGrid, self).__init__()
+        super(SpectralGrid, self).__init__()
 
         if not os.path.exists(grid_hdf5_fname):
             raise IOError('{0} does not exists'.format(grid_hdf5_fname))
@@ -64,7 +64,7 @@ class BaseSpectralGrid(object):
 
         self.index = pd.read_hdf(grid_hdf5_fname, 'index')
 
-        self.parameters = self.index.columns
+        self.parameters = self.index.columns.tolist()
 
         for parameter_name in self.parameters:
             setattr(self, parameter_name, self.index[parameter_name].iloc[0])
@@ -88,10 +88,30 @@ class BaseSpectralGrid(object):
             self.flux_unit = u.Unit(h5file['fluxes'].attrs['flux.unit'])
             self.fluxes = np.array(h5file['fluxes'])
 
-    def evaluate(self, **kwargs):
+    def evaluate(self, *args, **kwargs):
         """
         Interpolating on the grid to the necessary parameters
+
+        Examples
+        --------
+
+        This can either be called with arguments ``specgrid.evaluate(5780, 4.4, -1)`` or
+        using
         """
+
+        if len(args) > 0:
+            if len(kwargs) > 0:
+                raise ValueError('One can either use arguments or '
+                                 'keyword arguments not both')
+            if len(args) != len(self.parameters):
+                raise ValueError(
+                    'evaluate() takes {0} arguments '
+                    'for each parameter ({1}) - {2} given'.format(
+                        len(self.parameters),
+                        ', '.join(self.parameters),
+                        len(args)))
+            for param_name, value in zip(args, self.parameters):
+                setattr(self, param_name, value)
 
         for key in kwargs:
             if key not in self.parameters:

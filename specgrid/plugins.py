@@ -1,4 +1,6 @@
 import warnings
+from collections import OrderedDict
+
 
 import scipy.ndimage as nd
 from scipy.ndimage.filters import gaussian_filter1d
@@ -97,45 +99,6 @@ class InstrumentConvolve(object):
                                      dispersion_unit=spectrum.wavelength.unit,
                                      unit=spectrum.unit)
 
-
-#Guassian Convolution
-class Convolve(object):
-    """
-    This class can be called to do a gaussian convolution on a given spectrum.
-    You must initialize it with the desired instrumental resolution and central
-    wavelength. The output will be a Spectrum1D object.
-
-    Parameters
-    ----------
-    resolution: float
-        resolution R defined as lambda / delta lambda.
-    central_wavelength: quantity
-        the middle of the bandpass of interest.
-    """
-    parameters = []
-
-    def __init__(self,resolution, central_wavelength):
-        self.resolution = resolution
-        self.central_wavelength = central_wavelength
-
-    def __call__(self,spectrum):
-        R = self.resolution
-        Lambda = self.central_wavelength.value
-        wavelength = spectrum.dispersion.value
-
-        conversionfactor = 2 * np.sqrt(2 * np.log(2))
-        deltax = np.mean(wavelength[1:] - wavelength[0:-1])
-        FWHM = Lambda/R
-        sigma = (FWHM/deltax)/conversionfactor
-
-        flux = spectrum.flux
-
-        convolved_flux = gaussian_filter1d(flux, sigma, axis=0, order=0)
-
-        return Spectrum1D.from_array(
-            spectrum.dispersion,
-            convolved_flux,
-            dispersion_unit=spectrum.dispersion.unit, unit=spectrum.unit)
 
 
 class Interpolate(object):
@@ -335,3 +298,9 @@ def observe(model, wgrid, slit, seeing, overresolve, offset=0.):
     mint = np.interp(wgrid, model['w'], model['flux'])
     mconv = nd.convolve1d(mint, filt)
     return Table([wgrid, mconv], names=('w','flux'), meta={'filt': filt})
+
+
+stellar_physics_plugins = OrderedDict([('vrot', RotationalBroadening),
+                                       ('vrad', DopplerShift),
+                                       ('ccm89', CCM89Extinction),])
+
