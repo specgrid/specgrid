@@ -8,9 +8,13 @@ import pytest
 ## exceptions
 # enable_deprecations_as_exceptions()
 
+import h5py
+import numpy as np
+from astropy import units as u
+
 import specgrid
 from specgrid import SpectralGrid
-import h5py
+from specgrid import Spectrum1D
 
 def data_path(filename):
     return os.path.join(specgrid.__path__[0], 'data', filename)
@@ -20,7 +24,13 @@ def data_path(filename):
 def test_specgrid():
     return SpectralGrid(data_path('munari_small.h5'))
 
-@pytest.fixture
+@pytest.fixture(scope='session')
 def h5_test_data():
     return h5py.File(data_path('test_data.h5'), mode='r')
+
+@pytest.fixture(scope='session')
+def test_spectrum():
+    wave, flux = np.loadtxt(data_path('test_spec.txt'), unpack=True)
+    return Spectrum1D.from_array(wave * u.angstrom,
+                                 flux * u.erg / u.s / u.cm**2 / u.angstrom)
 

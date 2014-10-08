@@ -1,6 +1,6 @@
-**************************
-Fitting a stellar spectrum
-**************************
+********************************
+Simple fit of a stellar spectrum
+********************************
 
 Fitting a stellar spectrum is shown here::
 
