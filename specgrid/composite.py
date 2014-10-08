@@ -1,6 +1,8 @@
 from collections import OrderedDict
 from astropy.units import Quantity
 
+from specgrid import plugins
+
 
 class ModelStar(object):
 
@@ -42,9 +44,15 @@ class ModelStar(object):
         return self()
 
 def assemble_model_star(spectral_grid, spectrum=None, normalize_pol=None, **kwargs):
-
+    stellar_physics_plugins = []
+    instrument_physics_plugins = []
     for key in kwargs:
-        pass
+        if key in plugins.stellar_physics_plugins:
+            current_plugin = plugins.stellar_physics_plugins[key]
+            setattr(current_plugin, key, kwargs[key])
+            stellar_physics_plugins.append(current_plugin)
+
+
 
 
     convolve = InstrumentConvolve(R=self.spectral_parameters['R'])
