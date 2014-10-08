@@ -10,6 +10,6 @@ This is an Astropy affiliated package.
 from ._astropy_init import *
 # ----------------------------------------------------------------------------
 
-
-#from specgrid.fix_spectrum1d import Spectrum1D
-#from specgrid.specgrid import BaseSpectralGrid
+# For egg_info test builds to pass, put package imports here.
+if not _ASTROPY_SETUP_:
+    from specgrid.specgrid import BaseSpectralGrid
