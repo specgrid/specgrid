@@ -1,13 +1,14 @@
-*********************************
+**********************************
 Simple spectral grid interpolation
-*********************************
+**********************************
 
-The first step is too obtain an appropriate specgrid from the author. The
+The first step is too obtain an appropriate specgrid from the authors. The
 munari specgrid is publicly available
 `here <http://moria.astro.utoronto.ca/~wkerzend/files/munari.h5>`_.
 
-We will be dealing with the munari spectral grid here.
-It is very easy to open the spectral grid
+For all examples we will use that grid.
+
+It is very easy to open the spectral grid with :class:`~specgrid.SpectralGrid`
 
     >>> from specgrid import SpectralGrid
     >>> munari_grid = SpectralGrid('munari.h5')
@@ -17,7 +18,7 @@ It is very easy to open the spectral grid
     >>> munari.teff
     3500.
 
-The easiest way do an interpolation is to use the `SpectralGrid.evaluate` method::
+The easiest way do an interpolation is to use the `~SpectralGrid.evaluate` method::
 
     >>> spec = munari.evaluate(5780, 4.4, 0.0)
     >>> spec
@@ -54,3 +55,5 @@ will only update the selected keyword values and leave the rest the same::
     >>> munari.feh
     0.0
 
+.. automodapi:: specgrid.base
+    :no-inheritance-diagram:

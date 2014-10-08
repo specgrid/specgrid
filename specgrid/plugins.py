@@ -15,7 +15,7 @@ class RotationalBroadening(object):
 
     @property
     def vrot(self):
-        return getattr(self, '_vrot', 1. * u.km / u.s)
+        return getattr(self, '_vrot', 0.0 * u.km / u.s)
 
     @vrot.setter
     def vrot(self, value):
@@ -40,6 +40,9 @@ class RotationalBroadening(object):
         return profile/profile.sum()
 
     def __call__(self, spectrum):
+        if np.isclose(self.vrot, 0.0 * u.km / u.s, atol=0.0 * u.km / u.s):
+            return spectrum
+
         wavelength, flux = spectrum.wavelength.value, spectrum.flux
         log_grid_log_wavelength = np.arange(np.log(wavelength.min()),
                                             np.log(wavelength.max()),
@@ -69,10 +72,9 @@ class DopplerShift(object):
     parameters = ['vrad']
 
     def __call__(self, spectrum):
-        doppler_factor = 1. + self.vrad / const.c
+        doppler_factor = 1. + (self.vrad / const.c)
         return Spectrum1D.from_array(spectrum.wavelength * doppler_factor,
-                                     spectrum.flux,
-                                     dispersion_unit=spectrum.wavelength.unit)
+                                     spectrum.flux)
 
 
 class InstrumentConvolve(object):
@@ -92,7 +94,7 @@ class InstrumentConvolve(object):
 
     @property
     def R(self):
-        return getattr(self, '_R', 0. * u.km / u.s)
+        return getattr(self, '_R', np.inf * u.km / u.s)
 
     @R.setter
     def R(self, value):
@@ -101,12 +103,15 @@ class InstrumentConvolve(object):
 
     parameters = ['R']
 
-    def __init__(self, R=1000., sampling=2.):
+    def __init__(self, R=np.inf, sampling=2.):
         self.R = u.Quantity(R, u.Unit(1))
 
         self.sampling = float(sampling)
 
     def __call__(self, spectrum):
+        if np.isinf(self.R.value):
+            return spectrum
+
         wavelength, flux = spectrum.wavelength.value, spectrum.flux
         log_grid_log_wavelength = np.arange(np.log(wavelength.min()),
                                             np.log(wavelength.max()),
@@ -185,10 +190,10 @@ class Normalize(object):
                                   observed.wavelength.max()])
         self.window = self.domain/observed.wavelength.mean() - 1.
 
-    def __call__(self, model):
+    def __call__(self, spectrum):
         # V[:,0]=mfi/e, Vp[:,1]=mfi/e*w, .., Vp[:,npol]=mfi/e*w**npol
         
-        V = self._Vp * (model.flux / self.uncertainty)[:, np.newaxis]
+        V = self._Vp * (spectrum.flux / self.uncertainty)[:, np.newaxis]
         # normalizes different powers
         scl = np.sqrt((V*V).sum(0))
         if np.isfinite(scl[0].value):  # check for validity before evaluating
@@ -204,10 +209,10 @@ class Normalize(object):
             self.polynomial = Polynomial(sol, domain=self.domain.value,
                                          window=self.window.value)
             return Spectrum1D.from_array(
-                model.wavelength.value,
-                fit)
+                spectrum.wavelength,
+                u.Quantity(fit, spectrum.unit))
         else:
-            return model
+            return spectrum
 
 
 class NormalizeParts(object):

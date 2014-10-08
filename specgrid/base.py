@@ -96,7 +96,8 @@ class SpectralGrid(object):
         --------
 
         This can either be called with arguments ``specgrid.evaluate(5780, 4.4, -1)`` or
-        using
+        using keyword way of calling (then not all parameters have to be given)
+        ``specgrid.evaluate(logg=4.4)``
         """
 
         if len(args) > 0:
