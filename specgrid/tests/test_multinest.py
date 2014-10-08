@@ -5,7 +5,7 @@ import os
 import pytest
 from collections import OrderedDict
 
-from specgrid import fitmultinest
+
 
 from specgrid.multinest import priors
 from specgrid.fix_spectrum1d import Spectrum1D
@@ -18,8 +18,12 @@ except ImportError:
     pymultinest_available = False
 else:
     pymultinest_available = True
+    from specgrid import fitmultinest
+    
+pytestmark = pytest.mark.skipif(not pymultinest_available,
+                                reason='pymultinest not available')
 
-pytestmark = pytest.mark.skipif(not pymultinest_available)
+
 
 import specgrid
 
