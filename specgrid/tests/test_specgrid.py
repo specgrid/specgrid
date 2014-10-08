@@ -3,10 +3,17 @@ import specgrid
 from specgrid import BaseSpectralGrid
 import numpy.testing as nptesting
 import numpy as np
+import h5py
 import pytest
+
 
 def data_path(filename):
     return os.path.join(specgrid.__path__[0], 'data', filename)
+
+@pytest.fixture
+def h5_test_data():
+    return h5py.File(data_path('test_data.h5'), mode='r')
+
 
 class TestSimpleSpectralGrid():
     def setup(self):
@@ -28,3 +35,9 @@ class TestSimpleSpectralGrid():
         nptesting.assert_allclose(self.spec_grid.logg, 4.4)
         nptesting.assert_allclose(self.spec_grid.feh,
                                   self.spec_grid.index['feh'][0])
+
+    def test_simple_interpolation(self, h5_test_data):
+        spec = self.spec_grid.evaluate(teff=5780., logg=4.4, feh=0.0)
+        comp_flux = h5_test_data['test_data']['simple_interpolation_sun'].__array__()
+        nptesting.assert_allclose(spec.flux.value, comp_flux)
+

@@ -37,11 +37,11 @@ def test_fixed_prior():
     nptest.assert_almost_equal(fixed_prior(.5), 2.0)
     
 def test_prior_collections():
-    priors=OrderedDict([('teff', priors.UniformPrior(4000, 9000)),
+    prior_dict=OrderedDict([('teff', priors.UniformPrior(4000, 9000)),
             ('logg', priors.GaussianPrior(3, 0.5)),
             ('feh', priors.FixedPrior(-0.5))])
     
-    col = fitmultinest.PriorCollections(priors)
+    col = priors.PriorCollections(prior_dict)
     c = np.array([0.5, 0.5, 1.0])
     col.prior_transform(c, 3, 3)
     
