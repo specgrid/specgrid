@@ -110,7 +110,7 @@ class SpectralGrid(object):
                         len(self.parameters),
                         ', '.join(self.parameters),
                         len(args)))
-            for param_name, value in zip(args, self.parameters):
+            for param_name, value in zip(self.parameters, args):
                 setattr(self, param_name, value)
 
         for key in kwargs:

@@ -62,12 +62,8 @@ install:
     # CONDA
     - conda create --yes -n test -c astropy-ci-extras python=$TRAVIS_PYTHON_VERSION
     - source activate test
+    - conda install --yes numpy=$NUMPY_VERSION scipy h5py pandas cython astropy
     - pip install pip --upgrade
-    - pip install cython
-    - pip install astropy
-    - pip install scipy
-    - pip install h5py
-    - pip install pandas
     - pip install git+https://github.com/astropy/specutils
     # CORE DEPENDENCIES
     - if [[ $SETUP_CMD != egg_info ]]; then $CONDA_INSTALL numpy=$NUMPY_VERSION pytest pip Cython; fi
