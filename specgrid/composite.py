@@ -40,3 +40,6 @@ class ModelStar(object):
                 new_value = Quantity(new_value, current_value.unit)
             setattr(self, kwarg, new_value)
         return self()
+
+def assemble_model_star(specgrid, spectrum=None, params=None):
+    pass

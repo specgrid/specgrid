@@ -12,3 +12,4 @@ from ._astropy_init import *
 
 
 #from specgrid.fix_spectrum1d import Spectrum1D
+from specgrid.specgrid import BaseSpectralGrid

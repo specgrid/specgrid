@@ -32,24 +32,15 @@ class BaseSpectralGrid(object):
 
     def __init__(self, grid_hdf5_fname,
                  interpolator=interpolate.LinearNDInterpolator):
+
         super(BaseSpectralGrid, self).__init__()
+
         if not os.path.exists(grid_hdf5_fname):
             raise IOError('{0} does not exists'.format(grid_hdf5_fname))
 
-        self.grid_hdf5_fname = grid_hdf5_fname
-        self.index = pd.read_hdf(self.grid_hdf5_fname, 'index')
+        self._load_index(grid_hdf5_fname)
+        self._load_fluxes(grid_hdf5_fname)
 
-        self.parameters = self.index.columns
-        
-        for parameter_name in self.parameters:
-            setattr(self, parameter_name, None)
-
-        with h5py.File(self.grid_hdf5_fname, 'r') as h5file:
-            wavelength_unit = u.Unit(h5file['fluxes'].attrs['wavelength.unit'])
-            self.wavelength = h5file['fluxes'].attrs['wavelength'] * \
-                              wavelength_unit
-            self.flux_unit = u.Unit(h5file['fluxes'].attrs['flux.unit'])
-            self.fluxes = np.array(h5file['fluxes'])
 
         self.interpolate_grid = interpolator(self.index.values, self.fluxes)
         self.interpolator = interpolator
@@ -58,26 +49,56 @@ class BaseSpectralGrid(object):
         return self.eval(*[getattr(self, item) for item in self.parameters])
 
 
-    def eval(self, *args):
+    def _load_index(self, grid_hdf5_fname):
         """
-        Interpolating on the grid to the necessary parameters
+        Loading the index from the hdf5 file
 
         Parameters
         ----------
 
-        teff: float
-            effective temperature
-        logg: float
-            base ten logarithm of surface gravity in cgs
-        feh: float
-            [Fe/H]
+        grid_hdf5_fname: ~str
+            path to HDF5 file
+        """
+
+        self.index = pd.read_hdf(grid_hdf5_fname, 'index')
+
+        self.parameters = self.index.columns
+
+        for parameter_name in self.parameters:
+            setattr(self, parameter_name, self.index[parameter_name].iloc[0])
+
+    def _load_fluxes(self, grid_hdf5_fname):
+        """
+        Loading the fluxes from the HDF5 file
+
+        Parameters
+        ----------
+
+        grid_hdf5_fname: ~str
+            path to HDF5 file
 
         """
-        flux = self.interpolate_grid(*args)
-        return Spectrum1D.from_array(self.wavelength.value,
-                                     flux,
-                                     dispersion_unit=self.wavelength.unit,
-                                     unit=self.flux_unit)
+
+        with h5py.File(self.grid_hdf5_fname, 'r') as h5file:
+            wavelength_unit = u.Unit(h5file['fluxes'].attrs['wavelength.unit'])
+            self.wavelength = h5file['fluxes'].attrs['wavelength'] * \
+                              wavelength_unit
+            self.flux_unit = u.Unit(h5file['fluxes'].attrs['flux.unit'])
+            self.fluxes = np.array(h5file['fluxes'])
+
+    def evaluate(self, **kwargs):
+        """
+        Interpolating on the grid to the necessary parameters
+        """
+
+        for key in kwargs:
+            if key not in self.parameters:
+                raise ValueError('{0} not a parameter of the current '
+                                 'spectral grid (parameters are {1})'.format(
+                    key, ','.join(self.parameters)))
+
+        return self.__call__()
+
 
 class MunariGrid(BaseSpectralGrid):
 

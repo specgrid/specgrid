@@ -1,7 +1,15 @@
-from collections import OrderedDict
-from specgrid.multinest.priors import PriorCollections
+import os
 import time
+import json
+
 import numpy as np
+
+
+import pymultinest
+
+class MultinestResult(object):
+    pass
+
 
 class BaseFitMultinest(object):
     """
@@ -10,14 +18,6 @@ class BaseFitMultinest(object):
     Parameters
     ----------
 
-    spectrum: ~Spectrum1D from specpgrid
-        Spectrum1D object with the observed spectrum
-    priors: ~dict
-        A dictionary with the parameters to fit as well as their priors as
-        implemented in the prior classes available (UniformPrior, GaussianPrior,
-        PoissonPrior,FixedPrior)
-    model_star: ~model from specpgrid
-        model object containing the spectral grid to evaluate
 
     likelihood: ~Likelihood object, optional
         By default uses the Likelihood object which uses the chi-square for the
@@ -28,22 +28,12 @@ class BaseFitMultinest(object):
     """
 
 
-    def __init__(self,priors, model_star, likelihood=None,
-                 run_dir='chains', prefix='spectrum_fit'):
-        #self.spectrum = spectrum    # Spectrum1D object with the data
-        self.model = model_star     # grid of spectra from specgrid
-        self.parameter_names = sorted(priors.keys(),
-                                      key=lambda key:
-                                      model_star.parameters.index(key))
-        priors = OrderedDict([(key, priors[key]) for key in self.parameter_names])
-        self.priors = PriorCollections(priors,
-                                parameter_order=model_star.parameters)
-                                # PriorCollection from the input priors
-        self.n_params = len(priors) # number of parameters to fit
+    def __init__(self, likelihood, prior_collection, run_dir='chains',
+                 prefix='spectrum_fit'):
+
         self.basename = self.prepare_fit_directory(run_dir, prefix) # prefix of the file names to save
-        if likelihood is None:
-            # use the default likelihood for a Spectrum1D object
-            self.likelihood = Likelihood(self.spectrum, model_star, self.parameter_names)
+        self.likelihood = likelihood
+        self.prior_collection = prior_collection
 
         # variables that will be filled in after the fit has been run
         self.fit_mean = None    # mean of fitted parameters
@@ -53,6 +43,11 @@ class BaseFitMultinest(object):
         self.sigma3 = None     # the upper and lower range for 3 sigma around the mean
         self.analyzer = None   # store the results of the pymultinest analyzer
         self._posterior_data = None
+
+
+    @property
+    def basename_(self):
+        return '{0}_'.format(self.basename)
 
     @property
     def posterior_data(self):
@@ -76,52 +71,16 @@ class BaseFitMultinest(object):
 
 #        progress.start()
         start_time = time.time()
+
         pymultinest.run(self.likelihood, self.priors.prior_transform,
-                        self.n_params, outputfiles_basename=self.basename + '_',
+                        self.n_params, outputfiles_basename=self.basename_,
                         resume=resume, verbose = verbose, **kwargs)
         json.dump(self.parameter_names, open("{0}_{1}".format(self.basename,
                                                       'params.json'), 'w')) # save parameter names
 
         print "Fit finished - took {0:.2f} s".format(time.time() - start_time)
         # analyze the output data
-        """
-        a = pymultinest.Analyzer(outputfiles_basename=self.basename, n_params = self.n_params)
-        self.analyzer = a
-        s = a.get_stats()
-        self.stats = s   # the statistics on the chain
-        modes = s['modes'][0]
-        self.mean = modes['mean']
-        self.sigma = modes['sigma']
-        self.evidence = s['global evidence']
 
-        sigma1 = list()
-        sigma3 = list()
-        marginals = s['marginals']
-        for i in np.arange(self.n_params):
-            sigma1.append(marginals[i]['1sigma'])
-            sigma3.append(marginals[i]['3sigma'])
-        self.sigma1 = sigma1
-        self.sigma3 = sigma3
-
-        if not(no_plots):
-            plt.figure()
-            plt.plot(self.spectrum.wavelength.value, self.spectrum.flux.value, color='red', label='data')
-
-            param_dict = OrderedDict([(key, value) for key, value in zip(self.parameter_names, self.mean)])
-            s2 = self.model.evaluate(**param_dict)
-            # plot the mean of the posteriors for the parameters
-            plt.plot(self.spectrum.wavelength.value, s2.flux.value, '-', color='blue', alpha=0.3, label='data')
-
-            # for posterior_param in a.get_equal_weighted_posterior()[::100,:-1]:
-            #     param_dict = OrderedDict([(key, value) for key, value in zip(self.parameter_names, posterior_param)])
-            #     s2 = self.model.evaluate(**param_dict)
-            # 	plt.plot(self.spectrum.wavelength.value, s2.flux.value, '-', color='blue', alpha=0.3, label='data')
-
-            plt.savefig(self.basename + 'posterior.pdf')
-            plt.close()
-            self.mkplots()
-
-        """
 
     def read_posterior_data(self):
         """
