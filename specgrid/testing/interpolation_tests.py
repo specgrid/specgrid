@@ -1,4 +1,4 @@
-from specgrid.specgrid import BaseSpectralGrid
+from specgrid.base import BaseSpectralGrid
 import numpy as np
 from scipy.optimize import minimize
 class TestInterpolation(BaseSpectralGrid):

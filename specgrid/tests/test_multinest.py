@@ -7,7 +7,7 @@ from specgrid import fitmultinest
 
 from specgrid.multinest import priors
 from specgrid.fix_spectrum1d import Spectrum1D
-from specgrid.specgrid import BaseSpectralGrid
+from specgrid.base import BaseSpectralGrid
 from specgrid.composite import ModelStar
 
 import specgrid
