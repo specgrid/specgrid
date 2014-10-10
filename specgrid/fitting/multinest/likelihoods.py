@@ -7,7 +7,7 @@ class SimpleSpectrumLikelihood(object):
     """
     A spectrum likelihood object. Initialize with the spectral grid model.
     Calls will returns the log-likelihood for observing a spectrum given the model
-    parameters and the uncertainty.
+    param_names and the uncertainty.
 
     Parameters
     ----------
@@ -24,7 +24,7 @@ class SimpleSpectrumLikelihood(object):
 
 
     def __call__(self, model_param, ndim, nparam):
-        # returns the likelihood of observing the data given the model parameters
+        # returns the likelihood of observing the data given the model param_names
         param_dict = OrderedDict([(key, value) for key, value in
                                   zip(self.parameter_names, model_param)])
 

@@ -2,10 +2,15 @@
 Simple fit of a stellar spectrum
 ********************************
 
-Fitting a stellar spectrum is shown here::
+There are a variety of ways to simply fit spectra with specgrid. The simplest
+way is to use one of the scipy minimzers::
 
-    >>> from specutils import Spectrum1D
-    >>> from specgrid import specgrid
+    >>> from specgrid import Spectrum1D,
+    >>> from specgrid import Spectrum1D, SpectralGrid, assemble_observation
+    >>> spec_grid = SpectralGrid('munari.h5')
+    >>> model_star = assemble_observation(spec_grid, plugin_names=['doppler', 'rotation', 'resolution'])
+
+    >>>
     >>> from specgrid import plugins
     >>> from specgrid import composite
     >>> from specgrid import fitting

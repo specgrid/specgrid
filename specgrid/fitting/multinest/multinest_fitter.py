@@ -21,7 +21,7 @@ class BaseFitMultinest(object):
 
     likelihood: ~Likelihood object, optional
         By default uses the Likelihood object which uses the chi-square for the
-        likelihood of observing the data given the model parameters
+        likelihood of observing the data given the model param_names
 
     run_dir:
 
@@ -36,8 +36,8 @@ class BaseFitMultinest(object):
         self.prior_collection = prior_collection
 
         # variables that will be filled in after the fit has been run
-        self.fit_mean = None    # mean of fitted parameters
-        self.sigma = None      # 1 average sigma (68% credible intervales) for fitted parameters
+        self.fit_mean = None    # mean of fitted param_names
+        self.sigma = None      # 1 average sigma (68% credible intervales) for fitted param_names
         self.evidence = None   # the global evidence value for the best fit
         self.sigma1 = None     # the upper and lower range for 1 sigma around the mean
         self.sigma3 = None     # the upper and lower range for 3 sigma around the mean

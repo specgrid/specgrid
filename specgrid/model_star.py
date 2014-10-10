@@ -30,8 +30,16 @@ class ModelStar(object):
 
         for model in ([spectral_grid] + self.all_plugins):
             self.param2model.update(OrderedDict([(param, model)
-                                          for param in model.parameters]))
-        self.parameters = self.param2model.keys()
+                                          for param in model.param_names]))
+
+    @property
+    def param_names(self):
+        return self.param2model.keys()
+
+    @property
+    def param_dict(self):
+        return OrderedDict([(param_name, getattr(self, param_name))
+                            for param_name in self.param_names])
 
     @property
     def all_plugins(self):
@@ -81,7 +89,7 @@ class ModelStar(object):
 
     def __call__(self):
         """
-        Evaluate the spectrum with the current parameters
+        Evaluate the spectrum with the current param_names
         """
         spectrum = self.spectral_grid()
 
@@ -92,13 +100,13 @@ class ModelStar(object):
     
     def evaluate(self, *args, **kwargs):
         """
-        Interpolating on the grid to the necessary parameters
+        Interpolating on the grid to the necessary param_names
 
         Examples
         --------
 
         This can either be called with arguments ``specgrid.evaluate(5780, 4.4, -1)`` or
-        using keyword way of calling (then not all parameters have to be given)
+        using keyword way of calling (then not all param_names have to be given)
         ``specgrid.evaluate(logg=4.4)``
         """
 
@@ -107,28 +115,31 @@ class ModelStar(object):
             if len(kwargs) > 0:
                 raise ValueError('One can either use arguments or '
                                  'keyword arguments not both')
-            if len(args) != len(self.parameters):
+            if len(args) != len(self.param_names):
                 raise ValueError(
                     'evaluate() takes {0} arguments '
                     'for each parameter ({1}) - {2} given'.format(
-                        len(self.parameters),
-                        ', '.join(self.parameters),
+                        len(self.param_names),
+                        ', '.join(self.param_names),
                         len(args)))
-            for param_name, value in zip(self.parameters, args):
+            for param_name, value in zip(self.param_names, args):
                 setattr(self, param_name, value)
 
         for key in kwargs:
-            if key not in self.parameters:
+            if key not in self.param_names:
                 raise ValueError('{0} not a parameter of the current '
-                                 'model_star (parameters are {1})'.format(
-                    key, ','.join(self.parameters)))
+                                 'model_star (param_names are {1})'.format(
+                    key, ','.join(self.param_names)))
             setattr(self, key, kwargs[key])
 
         return self.__call__()
 
 
+class ModelInstrument(object):
+    pass
 
-def assemble_model_star(spectral_grid, spectrum=None, normalize_npol=None, plugin_names=[]):
+
+def assemble_observation(spectral_grid, spectrum=None, normalize_npol=None, plugin_names=[]):
     """
 
     Parameters
@@ -187,6 +198,6 @@ def assemble_model_star(spectral_grid, spectrum=None, normalize_npol=None, plugi
 
     return model_star
 
-assemble_model_star.__doc__ = assemble_model_star.__doc__.format(
+assemble_observation.__doc__ = assemble_observation.__doc__.format(
     plugin_names=', '.join(plugins.astrophysics_plugins.keys() +
                            plugins.instrument_plugins.keys()))

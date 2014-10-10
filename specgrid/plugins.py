@@ -24,7 +24,7 @@ class RotationalBroadening(object):
 
     resolution = (20 * u.km / u.s / const.c).to(1)
     limb_darkening = 0.6
-    parameters = ['vrot']
+    param_names = ['vrot']
 
     def rotational_profile(self):
         vrot_by_c = (np.maximum(0.1 * u.m / u.s, np.abs(self.vrot)) /
@@ -69,7 +69,7 @@ class DopplerShift(object):
     def vrad(self, value):
         self._vrad = u.Quantity(value, u.km / u.s)
 
-    parameters = ['vrad']
+    param_names = ['vrad']
 
     def __call__(self, spectrum):
         doppler_factor = 1. + (self.vrad / const.c)
@@ -101,7 +101,7 @@ class InstrumentConvolve(object):
         self._R = u.Quantity(value, u.Unit(1))
 
 
-    parameters = ['R']
+    param_names = ['R']
 
     def __init__(self, R=np.inf, sampling=2.):
         self.R = u.Quantity(R, u.Unit(1))
@@ -145,7 +145,7 @@ class Interpolate(object):
         (model) spectrum to.
     """
 
-    parameters = []
+    param_names = []
 
     def __init__(self, observed):
         self.observed = observed
@@ -172,7 +172,7 @@ class Normalize(object):
         The degree of the polynomial
     """
 
-    parameters = []
+    param_names = []
 
     def __init__(self, observed, npol):
         if getattr(observed, 'uncertainty', None) is None:
@@ -231,7 +231,7 @@ class NormalizeParts(object):
     npol : list of int
         Polynomial degrees for the different parts
     """
-    parameters = []
+    param_names = []
 
     def __init__(self, observed, parts, npol):
         self.parts = parts
@@ -269,7 +269,7 @@ class NormalizeParts(object):
 
 
 class CCM89Extinction(object):
-    parameters = ['a_v', 'r_v']
+    param_names = ['a_v', 'r_v']
 
     def __init__(self, a_v=0.0, r_v=3.1):
         self.a_v = a_v

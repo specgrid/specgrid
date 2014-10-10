@@ -1,5 +1,6 @@
+**********
 Model star
-==========
+**********
 
 
 A composite stellar model allows us to create a model that has in addition to
@@ -8,9 +9,9 @@ astrophysical transformations like doppler shift, extinction, etc. as well as
 instrumental properties like resolution, normalization, etc. Here is a simple
 way to create such a model star::
 
-    >>> from specgrid import SpectralGrid, assemble_model_star
+    >>> from specgrid import SpectralGrid, assemble_observation
     >>> spec_grid = SpectralGrid('munari.h5')
-    >>> model_star = assemble_model_star(spec_grid, plugin_names=['doppler', 'rotation', 'resolution'])
+    >>> model_star = assemble_observation(spec_grid, plugin_names=['doppler', 'rotation', 'resolution'])
     >>> model_star.parameters
     ['teff', 'logg', 'feh', 'vrot', 'vrad', 'R']
 

@@ -27,7 +27,7 @@ class SpectralGrid(object):
     grid_hdf5_fname: filename for HDF5 File
     """
 
-    parameters = None
+    param_names = None
 
     def __init__(self, grid_hdf5_fname,
                  interpolator=interpolate.LinearNDInterpolator):
@@ -48,7 +48,7 @@ class SpectralGrid(object):
         return Spectrum1D.from_array(self.wavelength, self._interpolate_flux())
 
     def _interpolate_flux(self):
-        parameter_values = [getattr(self, item) for item in self.parameters]
+        parameter_values = [getattr(self, item) for item in self.param_names]
         return self.interpolate_grid(parameter_values)[0] * self.flux_unit
 
     def _load_index(self, grid_hdf5_fname):
@@ -64,9 +64,9 @@ class SpectralGrid(object):
 
         self.index = pd.read_hdf(grid_hdf5_fname, 'index')
 
-        self.parameters = self.index.columns.tolist()
+        self.param_names = self.index.columns.tolist()
 
-        for parameter_name in self.parameters:
+        for parameter_name in self.param_names:
             setattr(self, parameter_name, self.index[parameter_name].iloc[0])
 
     def _load_fluxes(self, grid_hdf5_fname):
@@ -90,13 +90,13 @@ class SpectralGrid(object):
 
     def evaluate(self, *args, **kwargs):
         """
-        Interpolating on the grid to the necessary parameters
+        Interpolating on the grid to the necessary param_names
 
         Examples
         --------
 
         This can either be called with arguments ``specgrid.evaluate(5780, 4.4, -1)`` or
-        using keyword way of calling (then not all parameters have to be given)
+        using keyword way of calling (then not all param_names have to be given)
         ``specgrid.evaluate(logg=4.4)``
         """
 
@@ -104,21 +104,21 @@ class SpectralGrid(object):
             if len(kwargs) > 0:
                 raise ValueError('One can either use arguments or '
                                  'keyword arguments not both')
-            if len(args) != len(self.parameters):
+            if len(args) != len(self.param_names):
                 raise ValueError(
                     'evaluate() takes {0} arguments '
                     'for each parameter ({1}) - {2} given'.format(
-                        len(self.parameters),
-                        ', '.join(self.parameters),
+                        len(self.param_names),
+                        ', '.join(self.param_names),
                         len(args)))
-            for param_name, value in zip(self.parameters, args):
+            for param_name, value in zip(self.param_names, args):
                 setattr(self, param_name, value)
 
         for key in kwargs:
-            if key not in self.parameters:
+            if key not in self.param_names:
                 raise ValueError('{0} not a parameter of the current '
-                                 'spectral grid (parameters are {1})'.format(
-                    key, ','.join(self.parameters)))
+                                 'spectral grid (param_names are {1})'.format(
+                    key, ','.join(self.param_names)))
             setattr(self, key, kwargs[key])
 
         return self.__call__()
