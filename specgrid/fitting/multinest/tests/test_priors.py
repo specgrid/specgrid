@@ -63,24 +63,6 @@ def test_prior_collections():
     nptest.assert_almost_equal(c, [(9000.0+4000.0) * 0.5, 3, -0.5])
 
 
-class TestLikelihood(object):
-    def setup(self):
-        self.spec_grid = SpectralGrid(data_path('munari_small.h5'))
-        self.model_star = ModelStar([self.spec_grid])
-        self.priors=OrderedDict([('teff', priors.UniformPrior(4000, 9000)),
-            ('logg', priors.GaussianPrior(3, 0.5)),
-            ('feh', priors.FixedPrior(-0.5))])
-        spectrum = self.model_star.evaluate(teff=5780,logg=4.14,feh=0.0)
-        spectrum.uncertainty = np.ones(spectrum.flux.shape) * spectrum.flux.unit
-        self.likelihood = fitmultinest.Likelihood(spectrum, self.model_star, self.priors.keys())
-        
-    def test_likelihood(self):
-        likelihood = self.likelihood([5780,4.14,0.0], 4,4 )
-        nptest.assert_almost_equal(likelihood, 0.0)
-        
-        l2 = self.likelihood([5781,4.14,0.0], 4, 4)
-        nptest.assert_almost_equal(l2, -14008598406.946743)
-
     
 class TestSimpleMultinest(object):
     def setup(self):

@@ -3,34 +3,17 @@ from astropy.units import Quantity
 
 from specgrid import plugins
 
-
-class ModelStar(object):
-    """
-    A model star combines a normal spectral grid (~specgrid.SpectralGrid) with a
-    number of plugins that allow to add further physical and instrumental effects
-    (e.g. normalizing, dopplershift, rotation, etc.)
-
-    Parameters
-    ----------
-
-    spectral_grid: ~specgrid.SpectralGrid
-
-    """
-
+class SpecGridCompositeModel(object):
     param2model = OrderedDict()
 
-    def __init__(self, spectral_grid, astrophysics_plugins=[],
-                 instrument_plugins=[]):
-        self.spectral_grid = spectral_grid
-        self.astrophysics_plugins = astrophysics_plugins
-        self.instrument_plugins = instrument_plugins
-
+    def __init__(self, models=[]):
+        self.models = models
 
         self.param2model = OrderedDict()
 
-        for model in ([spectral_grid] + self.all_plugins):
-            self.param2model.update(OrderedDict([(param, model)
-                                          for param in model.param_names]))
+        for model in models:
+            self.param2model.update(OrderedDict(
+                [(param, model) for param in model.param_names]))
 
     @property
     def param_names(self):
@@ -41,74 +24,31 @@ class ModelStar(object):
         return OrderedDict([(param_name, getattr(self, param_name))
                             for param_name in self.param_names])
 
-    @property
-    def all_plugins(self):
-        return self.astrophysics_plugins + self.instrument_plugins
-
     def __getattr__(self, item):
         if item in self.param2model:
             return getattr(self.param2model[item], item)
         else:
-            return super(ModelStar, self).__getattribute__(item)
+            return super(SpecGridCompositeModel, self).__getattribute__(item)
 
     def __setattr__(self, item, value):
         if item in self.param2model:
             return setattr(self.param2model[item], item, value)
         else:
-            super(ModelStar, self).__setattr__(item, value)
+            super(SpecGridCompositeModel, self).__setattr__(item, value)
 
-    def _call_astrophysics_plugins(self, spectrum):
+
+    def _set_parameters(self, *args, **kwargs):
         """
-        Evaluate the composite model of all astrophysics plugins
-
-        Parameters
-        ----------
-
-        spectrum: ~specutils.Spectrum1D
-        """
-
-        for model in self.astrophysics_plugins:
-            spectrum = model(spectrum)
-
-        return spectrum
-
-    def __call_instrument_plugins(self, spectrum):
-        """
-        Evaluate the composite model of all instrument plugins
-
-        Parameters
-        ----------
-
-        spectrum: ~specutils.Spectrum1D
-        """
-
-        for model in self.instrument_plugins:
-            spectrum = model(spectrum)
-
-        return spectrum
-
-    def __call__(self):
-        """
-        Evaluate the spectrum with the current param_names
-        """
-        spectrum = self.spectral_grid()
-
-        spectrum = self._call_astrophysics_plugins(spectrum)
-        spectrum = self.__call_instrument_plugins(spectrum)
-
-        return spectrum
-    
-    def evaluate(self, *args, **kwargs):
-        """
-        Interpolating on the grid to the necessary param_names
+        Setting the parameters
 
         Examples
         --------
 
-        This can either be called with arguments ``specgrid.evaluate(5780, 4.4, -1)`` or
+        This can either be called with arguments ``specgrid._set_parameters(5780, 4.4, -1)`` or
         using keyword way of calling (then not all param_names have to be given)
-        ``specgrid.evaluate(logg=4.4)``
+        ``specgrid._set_parameters(logg=4.4)``
         """
+
 
 
         if len(args) > 0:
@@ -128,16 +68,97 @@ class ModelStar(object):
         for key in kwargs:
             if key not in self.param_names:
                 raise ValueError('{0} not a parameter of the current '
-                                 'model_star (param_names are {1})'.format(
+                                 'observation (param_names are {1})'.format(
                     key, ','.join(self.param_names)))
             setattr(self, key, kwargs[key])
+
+    def __call__(self, spectrum):
+
+        for model in self.models:
+            spectrum = model(spectrum)
+
+        return spectrum
+
+class ModelStar(SpecGridCompositeModel):
+    """
+    A model star combines a normal spectral grid (~specgrid.SpectralGrid) with a
+    number of plugins that allow to add further physical and instrumental effects
+    (e.g. normalizing, dopplershift, rotation, etc.)
+
+    Parameters
+    ----------
+
+    spectral_grid: ~specgrid.SpectralGrid
+
+    """
+
+    def __init__(self, spectral_grid, plugins=[]):
+        self.spectral_grid = spectral_grid
+        super(ModelStar, self).__init__([spectral_grid] + plugins)
+        self.models = self.models[1:]
+
+    def __call__(self):
+        """
+        Evaluate the spectrum with the current param_names
+        """
+        spectrum = self.spectral_grid()
+
+        for model in self.models:
+            spectrum = model(spectrum)
+
+        return spectrum
+
+    def evaluate(self, *args, **kwargs):
+        """
+        Interpolating on the grid to the necessary param_names
+
+        Examples
+        --------
+
+        This can either be called with arguments ``specgrid.evaluate(5780, 4.4, -1)`` or
+        using keyword way of calling (then not all param_names have to be given)
+        ``specgrid.evaluate(logg=4.4)``
+        """
+
+        self._set_parameters(*args, **kwargs)
 
         return self.__call__()
 
 
-class ModelInstrument(object):
-    pass
 
+class ModelInstrument(SpecGridCompositeModel):
+    def evaluate(self, spectrum, *args, **kwargs):
+        """
+        Interpolating on the grid to the necessary param_names
+
+        Examples
+        --------
+
+        This can either be called with arguments ``specgrid.evaluate(5780, 4.4, -1)`` or
+        using keyword way of calling (then not all param_names have to be given)
+        ``specgrid.evaluate(logg=4.4)``
+        """
+
+        self._set_parameters(*args, **kwargs)
+
+        return self.__call__(spectrum)
+
+
+class Observation(SpecGridCompositeModel):
+    def __init__(self, model_star, model_instrument):
+        self.model_star = model_star
+        self.model_instrument = model_instrument
+
+        self.param2model = self.model_star.param2model.copy()
+        self.param2model.update(self.model_instrument.param2model.copy())
+
+    def __call__(self):
+        spectrum = self.model_star()
+        return self.model_instrument(spectrum)
+
+    @property
+    def all_plugins(self):
+        return self.model_star.models + self.model_instrument.models
 
 def assemble_observation(spectral_grid, spectrum=None, normalize_npol=None, plugin_names=[]):
     """
@@ -146,7 +167,7 @@ def assemble_observation(spectral_grid, spectrum=None, normalize_npol=None, plug
     ----------
 
     spectral_grid: ~specgrid.SpectralGrid
-        spectral grid to be used in model_star
+        spectral grid to be used in observation
     spectrum: ~specutils.Spectrum1D
         spectrum to be used for interpolation, if None neither interpolation nor
             will be performed [default None]
@@ -193,10 +214,11 @@ def assemble_observation(spectral_grid, spectrum=None, normalize_npol=None, plug
     if not (spectrum is None or normalize_npol is None):
         instrument_plugins += [plugins.Normalize(spectrum, npol=normalize_npol)]
 
-    model_star = ModelStar(spectral_grid, astrophysics_plugins,
-                           instrument_plugins)
+    model_star = ModelStar(spectral_grid, astrophysics_plugins)
 
-    return model_star
+    model_instrument = ModelInstrument(instrument_plugins)
+
+    return Observation(model_star, model_instrument)
 
 assemble_observation.__doc__ = assemble_observation.__doc__.format(
     plugin_names=', '.join(plugins.astrophysics_plugins.keys() +

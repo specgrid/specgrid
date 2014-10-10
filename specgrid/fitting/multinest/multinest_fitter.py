@@ -4,10 +4,12 @@ import json
 
 import numpy as np
 
+from specgrid.fitting import BaseFitResult
+
 
 import pymultinest
 
-class MultinestResult(object):
+class MultinestResult():
     pass
 
 
@@ -35,14 +37,6 @@ class BaseFitMultinest(object):
         self.likelihood = likelihood
         self.prior_collection = prior_collection
 
-        # variables that will be filled in after the fit has been run
-        self.fit_mean = None    # mean of fitted param_names
-        self.sigma = None      # 1 average sigma (68% credible intervales) for fitted param_names
-        self.evidence = None   # the global evidence value for the best fit
-        self.sigma1 = None     # the upper and lower range for 1 sigma around the mean
-        self.sigma3 = None     # the upper and lower range for 3 sigma around the mean
-        self.analyzer = None   # store the results of the pymultinest analyzer
-        self._posterior_data = None
 
 
     @property
@@ -63,18 +57,13 @@ class BaseFitMultinest(object):
         # checking if previous chains already exist
         return os.path.join(run_dir, prefix)
 
-    def run(self, no_plots=False, resume=False, verbose=False, **kwargs):
-        # runs pymultinest
-#        progress = ProgressPrinter(
-#            n_params=self.n_params,
-#            outputfiles_basename=self.basename)
+    def run(self, **kwargs):
 
-#        progress.start()
         start_time = time.time()
 
-        pymultinest.run(self.likelihood, self.priors.prior_transform,
+        pymultinest.run(self.likelihood, self.prior_collection.prior_transform,
                         self.n_params, outputfiles_basename=self.basename_,
-                        resume=resume, verbose = verbose, **kwargs)
+                        **kwargs)
         json.dump(self.parameter_names, open("{0}_{1}".format(self.basename,
                                                       'params.json'), 'w')) # save parameter names
 

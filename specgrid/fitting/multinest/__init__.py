@@ -1,2 +1,3 @@
-from specgrid.multinest.priors import FixedPrior, UniformPrior, GaussianPrior, \
-    PriorCollections
+from specgrid.fitting.multinest import priors
+from specgrid.fitting.multinest.likelihoods import SimpleSpectrumLikelihood
+
