@@ -22,6 +22,10 @@ class UniformPrior(object):
     def __call__(self, cube):
         return cube * (self.ubound - self.lbound) + self.lbound
 
+    def __repr__(self):
+        return "uniform prior lbound {0} ubound {1}".format(self.lbound,
+                                                            self.ubound)
+
 class GaussianPrior(object):
     """
     A gaussian prior
@@ -44,6 +48,9 @@ class GaussianPrior(object):
     def __call__(self, cube):
         return stats.norm.ppf(cube,scale=self.sigma,loc=self.m)
 
+    def __repr__(self):
+        return "gaussian prior - mean {0} std {1}".format(self.m, self.sigma)
+
 
 class PoissonPrior(object):
     """
@@ -61,7 +68,10 @@ class PoissonPrior(object):
         self.m = m
 
     def __call__(self,cube):
-        return poisson.ppf(cube,loc=self.m)
+        return stats.poisson.ppf(cube,loc=self.m)
+
+    def __repr__(self):
+        return "poisson prior: loc {0}".format(self.m)
 
 class FixedPrior(object):
     """
@@ -80,18 +90,22 @@ class FixedPrior(object):
     def __call__(self, cube):
         return self.val
 
+    def __repr__(self):
+        return "fixed prior: {0}".format(self.val)
 
 
 
 
-class PriorCollections(object):
 
+class PriorCollection(object):
+    """
+    A collection of prior objects that will be evaluated
+    """
+    def __init__(self, priors_list):
 
-    def __init__(self, prior_dict, parameter_order=[]):
+        self.priors = priors_list
 
-        self.priors = prior_dict
-
-        for prior in self.priors.values():
+        for prior in self.priors:
             if not hasattr(prior, '__call__'):
                 raise TypeError('Given prior {0} is not callable'.format(prior))
 
@@ -100,5 +114,12 @@ class PriorCollections(object):
         # according to the prior distribution
 
         for i in xrange(nparam):
-            cube[i] = self.priors.values()[i](cube[i])
+            cube[i] = self.priors[i](cube[i])
+
+    def _generate_prior_str(self):
+        return [repr(item) for item in self.priors]
+
+    def __repr__(self):
+        return "Priors in collection:\n---\n{0}\n---".format(
+            '\n'.join(self._generate_prior_str()))
 

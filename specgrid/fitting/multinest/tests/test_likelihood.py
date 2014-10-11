@@ -4,6 +4,8 @@ import numpy as np
 from specgrid.fitting.multinest import priors, SimpleSpectrumLikelihood
 import pytest
 
+import numpy.testing as nptesting
+
 @pytest.fixture()
 def test_multinest_model_star(test_specgrid):
     return ModelStar(test_specgrid)
@@ -18,26 +20,22 @@ def test_multinest_spectrum(test_multinest_model_star):
 
 def test_simple_spec_likelihood1(test_multinest_model_star,
                                  test_multinest_spectrum):
+    with pytest.raises(ValueError):
+        likelihood = SimpleSpectrumLikelihood(test_multinest_spectrum,
+                                              test_multinest_model_star,
+                                              parameter_names=['lkj', 'dasdas'])
+
+def test_simple_spec_likelihood2(test_multinest_model_star,
+                                 test_multinest_spectrum):
+
     likelihood = SimpleSpectrumLikelihood(test_multinest_spectrum,
-                                          test_multinest_model_star,
-                                          parameter_names=['lkj', 'dasdas'])
+                                              test_multinest_model_star,
+                                              parameter_names=['teff', 'logg',
+                                                               'feh'])
 
-"""
-class TestSimpleSpectrumLikelihood(object):
-    def setup(self, test_spec_grid):
-        self.spec_grid = test_spec_grid
-        self.model_star = ModelStar(self.spec_grid)
-        self.priors = OrderedDict([('teff', priors.UniformPrior(4000, 9000)),
-            ('logg', priors.GaussianPrior(3, 0.5)),
-            ('feh', priors.FixedPrior(-0.5))])
-        spectrum = self.model_star.evaluate(teff=5780,logg=4.14,feh=0.0)
-        spectrum.uncertainty = np.ones(spectrum.flux.shape) * spectrum.flux.unit
-        self.likelihood = SimpleSpectrumLikelihood(spectrum, self.model_star, self.priors.keys())
+    likelihood_eval = likelihood([5780,4.14,0.0], None, None )
+    nptesting.assert_almost_equal(likelihood_eval, 0.0)
 
-    def test_likelihood(self):
-        likelihood = self.likelihood([5780,4.14,0.0], 4,4 )
-        nptest.assert_almost_equal(likelihood, 0.0)
+    likelihood_eval2 = likelihood([5781,4.14,0.0], 4, 4)
+    nptesting.assert_almost_equal(likelihood_eval2, -14008598406.946743)
 
-        l2 = self.likelihood([5781,4.14,0.0], 4, 4)
-        nptest.assert_almost_equal(l2, -14008598406.946743)
-"""

@@ -16,3 +16,13 @@ if not _ASTROPY_SETUP_:
     from specgrid.base import SpectralGrid
     from specgrid import plugins
     from specgrid.model_star import ModelStar, assemble_observation
+
+
+import logging
+
+logger = logging.getLogger('specgrid')
+logger.setLevel(logging.INFO)
+console_handler = logging.StreamHandler()
+console_formatter = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
+console_handler.setFormatter(console_formatter)
+logger.addHandler(console_handler)

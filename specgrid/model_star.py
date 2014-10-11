@@ -160,7 +160,7 @@ class Observation(SpecGridCompositeModel):
     def all_plugins(self):
         return self.model_star.models + self.model_instrument.models
 
-def assemble_observation(spectral_grid, spectrum=None, normalize_npol=None, plugin_names=[]):
+def assemble_observation(spectral_grid, plugin_names=[], spectrum=None, normalize_npol=None, ):
     """
 
     Parameters
@@ -182,7 +182,7 @@ def assemble_observation(spectral_grid, spectrum=None, normalize_npol=None, plug
 
     Returns
     -------
-        : ~ModelStar
+        : ~Observation
 
 
     """
@@ -207,6 +207,7 @@ def assemble_observation(spectral_grid, spectrum=None, normalize_npol=None, plug
     instrument_plugins = sorted(
         instrument_plugins,
         key=lambda item: plugins.instrument_plugins.values().index(item.__class__))
+
 
     if spectrum is not None:
         instrument_plugins += [plugins.Interpolate(spectrum)]
