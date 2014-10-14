@@ -34,7 +34,9 @@ def fit_simple_spectrum_multinest(spectrum, observation, priors):
 
     prior_collection = PriorCollection(priors_list)
 
-    return BaseMultinestFitter(likelihood, prior_collection)
+    multinest_fitter = BaseMultinestFitter(likelihood, prior_collection)
+    multinest_fitter.run()
+    return multinest_fitter
 
 
 

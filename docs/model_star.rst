@@ -1,6 +1,6 @@
-**********
-Model star
-**********
+*****************
+Model Observation
+*****************
 
 
 A composite stellar model allows us to create a model that has in addition to

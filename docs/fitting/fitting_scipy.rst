@@ -2,8 +2,7 @@
 Simple fit of a stellar spectrum
 ********************************
 
-There are a variety of ways to simply fit spectra with specgrid. The simplest
-way is to use one of the scipy minimzers::
+The simplest way to fit a spectrum is to use one of the scipy minimzers::
 
     >>> from specgrid import Spectrum1D,
     >>> from specgrid import Spectrum1D, SpectralGrid, assemble_observation
@@ -19,7 +18,6 @@ way is to use one of the scipy minimzers::
     >>> spectral_grid.parameters = ['teff', 'logg', 'feh']
 
     >>> model_star = composite.ModelStar([spectral_grid])
-
 
     >>> my_spectrum = model_star.eval(teff=4580., logg=3.0, feh=0.0)
 

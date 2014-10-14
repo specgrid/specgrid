@@ -1,35 +1,9 @@
 import numpy.testing as nptest
 import numpy as np
-import os
 
-import pytest
 from collections import OrderedDict
 
-
-
 from specgrid.fitting.multinest import priors
-from specgrid.fix_spectrum1d import Spectrum1D
-from specgrid.base import SpectralGrid
-from specgrid.model_star import ModelStar
-
-try:
-    import pymultinest
-except ImportError:
-    pymultinest_available = False
-else:
-    pymultinest_available = True
-    from specgrid import fitmultinest
-
-pytestmark = pytest.mark.skipif(not pymultinest_available,
-                                reason='pymultinest not available')
-
-
-
-import specgrid
-
-def data_path(filename):
-    return os.path.join(specgrid.__path__[0], 'data', filename)
-
 
 def test_uniform_prior():
     uniform_prior = priors.UniformPrior(lbound=3000, ubound=9000)
@@ -56,41 +30,11 @@ def test_prior_collections():
             ('logg', priors.GaussianPrior(3, 0.5)),
             ('feh', priors.FixedPrior(-0.5))])
     
-    col = priors.PriorCollections(prior_dict)
+    col = priors.PriorCollection(prior_dict.values())
     c = np.array([0.5, 0.5, 1.0])
     col.prior_transform(c, 3, 3)
     
-    nptest.assert_almost_equal(c, [(9000.0+4000.0) * 0.5, 3, -0.5])
+    nptest.assert_almost_equal(c, [(9000.0 + 4000.0) * 0.5, 3, -0.5])
 
 
     
-class TestSimpleMultinest(object):
-    def setup(self):
-        self.spec_grid = SpectralGrid(data_path('munari_small.h5'))
-        self.model_star = ModelStar([self.spec_grid])
-        spectrum = self.model_star.evaluate(teff=5780,logg=4.14,feh=0.0)
-        spectrum.uncertainty = (np.ones(spectrum.flux.shape)+np.sqrt(spectrum.flux.value)) * spectrum.flux.unit
-        self.priors=OrderedDict([('teff', priors.UniformPrior(5000, 6000)),
-            ('logg', priors.GaussianPrior(4.3,0.3)),
-            ('feh', priors.FixedPrior(0.05))])
-        self.fit_multinest = priors.FitMultinest(spectrum, self.priors, self.model_star)
-    
-    def test_multinest(self):
-         # test a run of multinest
-        try:
-            os.mkdir('chains')
-        except IOError:
-            pass
-        except OSError:
-            pass
-        
-        self.fit_multinest.run(seed=741761)
-         
-        nptest.assert_almost_equal(self.fit_multinest.mean,[5779.616533128825, 4.135490388533586, 0.04999999999999998])
-         
-        nptest.assert_almost_equal(self.fit_multinest.sigma1,
-        [[5779.607572222019, 5779.625214566039], [4.135304645124507, 4.135682928510821], [0.05, 0.05]])
-         
-        nptest.assert_almost_equal(self.fit_multinest.sigma3, 
-        [[5779.590363406517, 5779.6427247009115], [4.134914605525979, 4.13604688052353], [0.05, 0.05]])
-         

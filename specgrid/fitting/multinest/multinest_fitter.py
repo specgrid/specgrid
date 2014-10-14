@@ -1,6 +1,13 @@
 import os
 import time
 from scipy import stats
+import tempfile
+from collections import OrderedDict
+from logging import getLogger
+import pandas as pd
+import shutil
+
+logger = getLogger(__name__)
 
 import json
 
@@ -16,7 +23,82 @@ else:
     multinest_available = True
 
 class MultinestResult():
-    pass
+
+
+    @classmethod
+    def from_multinest_basename(cls, basename, parameter_names):
+        """
+        Reading a MultiNest result from a basename
+        Parameter
+        ---------
+
+
+        basename: str
+            basename (path + prefix) for a multinest run
+
+        Returns
+            : ~MultinestResult
+        """
+
+        posterior_data = cls.read_posterior_data(basename, parameter_names)
+
+        return cls(posterior_data)
+
+    @staticmethod
+    def read_posterior_data(basename, parameter_names):
+        """
+        Reading the posterior data into a pandas dataframe
+
+        """
+        posterior_data = pd.read_csv('{0}_.txt'.format(basename),
+                           delim_whitespace=True,
+                           names=['posterior', 'x'] + parameter_names)
+        posterior_data.index = np.arange(len(posterior_data))
+        return posterior_data
+
+    def __init__(self, posterior_data):
+        self.posterior_data = posterior_data
+        self.parameter_names = [col_name for col_name in posterior_data.columns
+                                if col_name not in ['x', 'posterior']]
+
+    def calculate_sigmas(self, sigma):
+        sigmas = OrderedDict()
+        for parameter_name in self.parameter_names:
+            posterior_data = self.posterior_data.sort(parameter_name)
+            parameter_values, posterior_values = (posterior_data[parameter_name],
+                                                  posterior_data['posterior'])
+            posterior_cumsum = posterior_values.cumsum()
+
+            norm_distr = stats.norm(loc=0.0, scale=1.)
+
+            sigma_low = np.interp(norm_distr.cdf(-sigma), posterior_cumsum,
+                                  parameter_values)
+
+            sigma_high = np.interp(norm_distr.cdf(sigma), posterior_cumsum,
+                                  parameter_values)
+
+
+            sigmas[parameter_name] = (sigma_low, sigma_high)
+
+        return sigmas
+
+    @property
+    def mean(self):
+        if not hasattr(self, '_mean'):
+            _mean = OrderedDict([(param_name,
+                                  np.average(self.posterior_data[param_name],
+                                             weights=
+                                             self.posterior_data['posterior']))
+                                 for param_name in self.parameter_names])
+            self._mean = _mean
+
+        return self._mean
+
+
+
+
+
+
 
 
 class BaseMultinestFitter(object):
@@ -36,12 +118,13 @@ class BaseMultinestFitter(object):
     """
 
 
-    def __init__(self, likelihood, priors, run_dir='chains',
-                 prefix='spectrum_fit'):
+    def __init__(self, likelihood, priors, run_dir=None, prefix='specgrid_multinest'):
 
-        self.basename = self.prepare_fit_directory(run_dir, prefix) # prefix of the file names to save
+        self.run_dir = run_dir
+        self.prefix = prefix
         self.likelihood = likelihood
         self.priors = priors
+
 
 
 
@@ -67,49 +150,45 @@ class BaseMultinestFitter(object):
         # checking if previous chains already exist
         return os.path.join(run_dir, prefix)
 
-    def run(self, **kwargs):
+    def run(self, clean_up=None, **kwargs):
+
+        if clean_up is None:
+            if self.run_dir is None:
+                clean_up = True
+            else:
+                clean_up = False
+
+
+        if self.run_dir is None:
+            run_dir = tempfile.mkdtemp()
+        else:
+            run_dir = self.run_dir
+
+        basename = self.prepare_fit_directory(run_dir, self.prefix)
+
 
         start_time = time.time()
+
+        logger.info('Starting fit in {0} with prefix {1}'.format(run_dir, self.prefix))
         pymultinest.run(self.likelihood, self.priors.prior_transform,
-                        self.n_params, outputfiles_basename=self.basename_,
+                        self.n_params,
+                        outputfiles_basename='{0}_'.format(basename),
                         **kwargs)
-#        json.dump(self.parameter_names, open("{0}_{1}".format(self.basename,
-#                                                      'params.json'), 'w')) # save parameter names
 
-        print "Fit finished - took {0:.2f} s".format(time.time() - start_time)
-        # analyze the output data
+        logger.info("Fit finished - took {0:.2f} s"
+                    .format(time.time() - start_time))
 
+        self.result = MultinestResult.from_multinest_basename(
+            basename, self.likelihood.param_names)
 
-    def read_posterior_data(self):
-        """
-        Reading the posterior data into a pandas dataframe
-        :return:
-        """
-        posterior_data = pd.read_csv('{0}_.txt'.format(self.basename),
-                           delim_whitespace=True,
-                           names=['posterior', 'x'] + self.parameter_names)
-        posterior_data.index = np.arange(len(posterior_data))
-        return posterior_data
+        if clean_up == True:
+            logger.info("Cleaning up - deleting {0}".format(run_dir))
+            shutil.rmtree(run_dir)
+
+        return self.result
 
 
 
-    def calculate_sigma(self, parameter_name, sigma):
-
-        posterior_data = self.posterior_data.sort(parameter_name)
-        parameter_values, posterior_values = (posterior_data[parameter_name],
-                                              posterior_data['posterior'])
-        posterior_cumsum = posterior_values.cumsum()
-
-        norm_distr = stats.norm(loc=0.0, scale=1.)
-
-        sigma_low = np.interp(norm_distr.cdf(-sigma), posterior_cumsum,
-                              parameter_values)
-
-        sigma_high = np.interp(norm_distr.cdf(sigma), posterior_cumsum,
-                              parameter_values)
-
-
-        return sigma_low, sigma_high
 
 
     def __repr__(self):

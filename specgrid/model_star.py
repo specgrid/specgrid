@@ -124,6 +124,11 @@ class ModelStar(SpecGridCompositeModel):
 
         return self.__call__()
 
+    def __repr__(self):
+
+        param_str = '\n'.join(['{0} {1}'.format(key, value)
+                     for key, value in self.param_dict.items()])
+        return "Model Star Parameters:\n\n{0}".format(param_str)
 
 
 class ModelInstrument(SpecGridCompositeModel):
@@ -143,6 +148,12 @@ class ModelInstrument(SpecGridCompositeModel):
 
         return self.__call__(spectrum)
 
+    def __repr__(self):
+
+        param_str = '\n'.join(['{0} {1}'.format(key, value)
+                     for key, value in self.param_dict.items()])
+        return "Model Instrument Parameters:\n\n{0}".format(param_str)
+
 
 class Observation(SpecGridCompositeModel):
     def __init__(self, model_star, model_instrument):
@@ -159,6 +170,24 @@ class Observation(SpecGridCompositeModel):
     @property
     def all_plugins(self):
         return self.model_star.models + self.model_instrument.models
+
+    def __repr__(self):
+        return "Model Observation:\n\n{0}\n\n{1}".format(self.model_star, self.model_instrument)
+
+    def evaluate(self, *args, **kwargs):
+        #### Split up **kwargs ###
+        model_star_kwargs = {}
+        model_instrument_kwargs = {}
+
+        for key in kwargs:
+            if key in self.model_star.param2model:
+                model_star_kwargs[key] = kwargs[key]
+            elif key in self.model_instrument.param2model:
+                model_instrument_kwargs[key] = kwargs[key]
+            else:
+                raise ValueError('Parameter {0} not a valid parameter ({1})'.format(key, ','.join(self.param2model.keys())))
+
+        return self.model_instrument.evaluate(self.model_star.evaluate(**model_star_kwargs), **model_instrument_kwargs)
 
 def assemble_observation(spectral_grid, plugin_names=[], spectrum=None, normalize_npol=None, ):
     """

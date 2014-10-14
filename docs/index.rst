@@ -7,4 +7,5 @@ Specgrid documentation
 
     simple_specgrid
     model_star
+    fitting/index
 

@@ -14,7 +14,7 @@ from astropy import units as u
 
 import specgrid
 from specgrid import SpectralGrid
-from specgrid import Spectrum1D
+from specgrid import Spectrum1D, ModelStar
 
 def data_path(filename):
     return os.path.join(specgrid.__path__[0], 'data', filename)
@@ -34,3 +34,16 @@ def test_spectrum():
     return Spectrum1D.from_array(wave * u.angstrom,
                                  flux * u.erg / u.s / u.cm**2 / u.angstrom)
 
+#### MULTINEST Fixtures ###
+
+@pytest.fixture()
+def test_multinest_model_star(test_specgrid):
+    return ModelStar(test_specgrid)
+
+@pytest.fixture()
+def test_multinest_spectrum(test_multinest_model_star):
+    spectrum = test_multinest_model_star.evaluate(teff=5780., logg=4.14, feh=0.0)
+    spectrum.uncertainty = (np.ones(spectrum.flux.shape) +
+                            np.sqrt(spectrum.flux.value))
+
+    return spectrum
