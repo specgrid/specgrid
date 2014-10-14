@@ -45,6 +45,9 @@ class SimpleFitResult(BaseFitResult):
 
     @property
     def chi2(self):
+        """
+        :math:`\\chi2`
+        """
         chi2 = getattr(self, '_chi2', None)
         if chi2 is None:
             if self.spectrum.uncertainty is None:
@@ -58,7 +61,7 @@ class SimpleFitResult(BaseFitResult):
     @property
     def reduced_chi2(self):
         """
-        Compute reduced :math:`\Chi^2`
+        Compute reduced :math:`\\chi^2_\\textrm{red}`
         """
         return self.chi2 / (len(self.residuals.flux)
                             - len(self.parameter_guesses))
@@ -122,12 +125,18 @@ class SimpleLeastsqFitResult(SimpleFitResult):
 def fit_spectrum(spectrum, model_spectrum, fitter='leastsq',
                  fill_value=1e99, valid_slice=slice(None), **guesses):
     """
+    Parameters
+    ----------
 
-    :param spectrum:
-    :param model_spectrum:
-    :param fitter:
-    :param fill_value:
-    :param valid_slice:
+    spectrum: ~specutils.Spectrum1D
+        spectrum to be fit
+    model_spectrum: ~specgrid.ModelObservation
+        model of observation, that returns a spectrum
+    fitter: str
+        fitter name one of the scipy minimize options or leastsq
+    fill_value: ~float
+    valid_slice: ~slice
+        slice for valid data
     :return:
     """
 
@@ -166,7 +175,7 @@ def fit_spectrum(spectrum, model_spectrum, fitter='leastsq',
             model_flux = model.flux
 
         quality = ((spectrum.flux - model_flux) / uncertainty)[valid_slice]
-        return quality if fitter == 'leastsq' else quality.sum()
+        return quality if fitter == 'leastsq' else (quality**2).sum()
 
     if fitter == 'leastsq':
 
