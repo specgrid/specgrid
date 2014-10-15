@@ -2,7 +2,15 @@ import pandas as pd
 import os
 import sqlite3
 import numpy as np
-import h5py
+
+try:
+    import h5py
+except ImportError:
+    h5py_available = False
+else:
+    h5py_available = True
+
+
 from astropy import units as u
 
 

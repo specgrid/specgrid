@@ -9,7 +9,12 @@ except ImportError:
 
 import pandas as pd
 import os
-import h5py
+try:
+    import h5py
+except ImportError:
+    h5py_available = False
+else:
+    h5py_available = True
 from astropy import units as u
 
 from astropy import modeling

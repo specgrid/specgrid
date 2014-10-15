@@ -4,7 +4,14 @@ import sqlite3
 import ConfigParser
 import numpy as np
 from astropy import units as u, constants as const
-import h5py
+
+try:
+    import h5py
+except ImportError:
+    h5py_available = False
+else:
+    h5py_available = True
+
 
 
 
