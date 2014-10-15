@@ -1,6 +1,6 @@
 from collections import OrderedDict
 from logging import getLogger
-#likelihood = SimpleLikelihood(self.spectrum, observation, self.parameter_names)
+import numpy as np
 
 logger = getLogger(__name__)
 
@@ -82,3 +82,41 @@ class SimpleSpectrumLikelihood(object):
 
         return repr_str.format('\n'.join(self.parameter_names),
                                '\n'.join(fixed_parameter_str))
+
+
+class IsochroneSpectrumLikelihood(SimpleSpectrumLikelihood):
+
+    def __init__(self, spectrum, observation_model, v, bv, isochrone_interpolator,
+                 spectrum_parameter_names,
+                 isochrone_parameter_names=['age', 'feh', 'mass', 'distance',
+                                            'ebv']):
+        super(IsochroneSpectrumLikelihood, self).__init__(
+            spectrum, observation_model, spectrum_parameter_names)
+
+        self.v = v
+        self.bv = bv
+        self.isochrone_interpolator = isochrone_interpolator
+        self.param_names = isochrone_parameter_names
+
+
+    def __call__(self, model_param, ndim, nparam):
+        isochrone_values = self.isochrone_interpolator.interpolate_point(
+            model_param[0], model_param[1], model_param[2])
+
+        model_v = isochrone_values.m_v + (5*np.log10(model_param[3]) - 5)
+        likelihood = -0.5 * ((model_v - self.v[0]) / self.v[1])**2
+
+        model_bv = isochrone_values.bv + model_param[4]
+
+        likelihood += -0.5 ((model_bv - self.bv[0])/self.bv[1])
+
+        spectrum_param_dict = OrderedDict([('teff', isochrone_values.teff),
+                                           ('logg', isochrone_values.logg),
+                                           ('feh', model_param[1])])
+
+        m = self.observation(**spectrum_param_dict)
+
+        likelihood += (-0.5 * ((self.spectrum.flux.value - m.flux.value) /
+        self.spectrum.uncertainty.value)**2).sum()
+
+        return likelihood
