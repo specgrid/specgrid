@@ -1,3 +1,4 @@
 astropy
 cython
+pandas
 git+https://github.com/astropy/specutils
