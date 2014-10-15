@@ -5,6 +5,7 @@ Specgrid documentation
 .. toctree::
     :maxdepth: 2
 
-    munari_specgrid
-    fitting
+    simple_specgrid
+    model_star
+    fitting/index
 

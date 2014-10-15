@@ -1,7 +1,7 @@
-from specgrid.specgrid import BaseSpectralGrid
+from specgrid.base import SpectralGrid
 import numpy as np
 from scipy.optimize import minimize
-class TestInterpolation(BaseSpectralGrid):
+class TestInterpolation(SpectralGrid):
     pass
 
     def montecarlo_interpolation_test(self, points_idx=None):

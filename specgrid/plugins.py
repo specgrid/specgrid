@@ -1,4 +1,6 @@
 import warnings
+from collections import OrderedDict
+
 
 import scipy.ndimage as nd
 from scipy.ndimage.filters import gaussian_filter1d
@@ -10,10 +12,19 @@ import astropy.constants as const
 from fix_spectrum1d import Spectrum1D
 
 class RotationalBroadening(object):
-    vrot = 1. * u.km / u.s
+
+    @property
+    def vrot(self):
+        return getattr(self, '_vrot', 0.0 * u.km / u.s)
+
+    @vrot.setter
+    def vrot(self, value):
+        self._vrot = u.Quantity(value, u.km / u.s)
+
+
     resolution = (20 * u.km / u.s / const.c).to(1)
     limb_darkening = 0.6
-    parameters = ['vrot']
+    param_names = ['vrot']
 
     def rotational_profile(self):
         vrot_by_c = (np.maximum(0.1 * u.m / u.s, np.abs(self.vrot)) /
@@ -29,6 +40,9 @@ class RotationalBroadening(object):
         return profile/profile.sum()
 
     def __call__(self, spectrum):
+        if np.isclose(self.vrot, 0.0 * u.km / u.s, atol=0.0 * u.km / u.s):
+            return spectrum
+
         wavelength, flux = spectrum.wavelength.value, spectrum.flux
         log_grid_log_wavelength = np.arange(np.log(wavelength.min()),
                                             np.log(wavelength.max()),
@@ -47,14 +61,20 @@ class RotationalBroadening(object):
 
 class DopplerShift(object):
 
-    vrad = 0. * u.km / u.s
-    parameters = ['vrad']
+    @property
+    def vrad(self):
+        return getattr(self, '_vrad', 0. * u.km / u.s)
+
+    @vrad.setter
+    def vrad(self, value):
+        self._vrad = u.Quantity(value, u.km / u.s)
+
+    param_names = ['vrad']
 
     def __call__(self, spectrum):
-        doppler_factor = 1. + self.vrad / const.c
+        doppler_factor = 1. + (self.vrad / const.c)
         return Spectrum1D.from_array(spectrum.wavelength * doppler_factor,
-                                     spectrum.flux,
-                                     dispersion_unit=spectrum.wavelength.unit)
+                                     spectrum.flux)
 
 
 class InstrumentConvolve(object):
@@ -71,15 +91,27 @@ class InstrumentConvolve(object):
         number of pixels per resolution element (default=2.)
 
     """
-    R = 0 * u.Unit(1)
-    parameters = ['R']
 
-    def __init__(self, R, sampling=2.):
+    @property
+    def R(self):
+        return getattr(self, '_R', np.inf * u.km / u.s)
+
+    @R.setter
+    def R(self, value):
+        self._R = u.Quantity(value, u.Unit(1))
+
+
+    param_names = ['R']
+
+    def __init__(self, R=np.inf, sampling=2.):
         self.R = u.Quantity(R, u.Unit(1))
 
         self.sampling = float(sampling)
 
     def __call__(self, spectrum):
+        if np.isinf(self.R.value):
+            return spectrum
+
         wavelength, flux = spectrum.wavelength.value, spectrum.flux
         log_grid_log_wavelength = np.arange(np.log(wavelength.min()),
                                             np.log(wavelength.max()),
@@ -98,45 +130,6 @@ class InstrumentConvolve(object):
                                      unit=spectrum.unit)
 
 
-#Guassian Convolution
-class Convolve(object):
-    """
-    This class can be called to do a gaussian convolution on a given spectrum.
-    You must initialize it with the desired instrumental resolution and central
-    wavelength. The output will be a Spectrum1D object.
-
-    Parameters
-    ----------
-    resolution: float
-        resolution R defined as lambda / delta lambda.
-    central_wavelength: quantity
-        the middle of the bandpass of interest.
-    """
-    parameters = []
-
-    def __init__(self,resolution, central_wavelength):
-        self.resolution = resolution
-        self.central_wavelength = central_wavelength
-
-    def __call__(self,spectrum):
-        R = self.resolution
-        Lambda = self.central_wavelength.value
-        wavelength = spectrum.dispersion.value
-
-        conversionfactor = 2 * np.sqrt(2 * np.log(2))
-        deltax = np.mean(wavelength[1:] - wavelength[0:-1])
-        FWHM = Lambda/R
-        sigma = (FWHM/deltax)/conversionfactor
-
-        flux = spectrum.flux
-
-        convolved_flux = gaussian_filter1d(flux, sigma, axis=0, order=0)
-
-        return Spectrum1D.from_array(
-            spectrum.dispersion,
-            convolved_flux,
-            dispersion_unit=spectrum.dispersion.unit, unit=spectrum.unit)
-
 
 class Interpolate(object):
 
@@ -152,7 +145,7 @@ class Interpolate(object):
         (model) spectrum to.
     """
 
-    parameters = []
+    param_names = []
 
     def __init__(self, observed):
         self.observed = observed
@@ -179,7 +172,7 @@ class Normalize(object):
         The degree of the polynomial
     """
 
-    parameters = []
+    param_names = []
 
     def __init__(self, observed, npol):
         if getattr(observed, 'uncertainty', None) is None:
@@ -197,10 +190,10 @@ class Normalize(object):
                                   observed.wavelength.max()])
         self.window = self.domain/observed.wavelength.mean() - 1.
 
-    def __call__(self, model):
+    def __call__(self, spectrum):
         # V[:,0]=mfi/e, Vp[:,1]=mfi/e*w, .., Vp[:,npol]=mfi/e*w**npol
         
-        V = self._Vp * (model.flux / self.uncertainty)[:, np.newaxis]
+        V = self._Vp * (spectrum.flux / self.uncertainty)[:, np.newaxis]
         # normalizes different powers
         scl = np.sqrt((V*V).sum(0))
         if np.isfinite(scl[0].value):  # check for validity before evaluating
@@ -216,10 +209,10 @@ class Normalize(object):
             self.polynomial = Polynomial(sol, domain=self.domain.value,
                                          window=self.window.value)
             return Spectrum1D.from_array(
-                model.wavelength.value,
-                fit)
+                spectrum.wavelength,
+                u.Quantity(fit, spectrum.unit))
         else:
-            return model
+            return spectrum
 
 
 class NormalizeParts(object):
@@ -238,7 +231,7 @@ class NormalizeParts(object):
     npol : list of int
         Polynomial degrees for the different parts
     """
-    parameters = []
+    param_names = []
 
     def __init__(self, observed, parts, npol):
         self.parts = parts
@@ -276,7 +269,7 @@ class NormalizeParts(object):
 
 
 class CCM89Extinction(object):
-    parameters = ['a_v', 'r_v']
+    param_names = ['a_v', 'r_v']
 
     def __init__(self, a_v=0.0, r_v=3.1):
         self.a_v = a_v
@@ -286,7 +279,7 @@ class CCM89Extinction(object):
 
         from specutils import extinction
 
-        extinction_factor = 10**(-0.4*extinction.extinction_ccm89(
+        extinction_factor = 10 ** (-0.4 * extinction.extinction_ccm89(
             spectrum.wavelength, a_v=self.a_v, r_v=self.r_v))
 
         return Spectrum1D.from_array(
@@ -335,3 +328,11 @@ def observe(model, wgrid, slit, seeing, overresolve, offset=0.):
     mint = np.interp(wgrid, model['w'], model['flux'])
     mconv = nd.convolve1d(mint, filt)
     return Table([wgrid, mconv], names=('w','flux'), meta={'filt': filt})
+
+
+astrophysics_plugins = OrderedDict([('rotation', RotationalBroadening),
+                                       ('doppler', DopplerShift),
+                                       ('ccm89', CCM89Extinction),])
+
+instrument_plugins = OrderedDict([
+    ('resolution', InstrumentConvolve)])

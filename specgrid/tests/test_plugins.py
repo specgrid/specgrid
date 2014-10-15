@@ -4,7 +4,7 @@ from numpy.polynomial import Polynomial
 from specgrid.fix_spectrum1d import Spectrum1D
 #from specutils import Spectrum1D
 from astropy import units as u
-from specgrid.plugins import Convolve, Interpolate, Normalize, NormalizeParts
+from specgrid.plugins import InstrumentConvolve, Interpolate, Normalize, NormalizeParts
 from scipy.integrate import simps
 
 
@@ -14,10 +14,8 @@ def test_convolution():
                                     unit='erg/(cm^2 s Angstrom)')
     my_spec.flux[1000] = 0.0
 
-    R = 5000.
-    central_wavelength = 7000. * u.Angstrom
 
-    convolve_plugin = Convolve(R, central_wavelength)
+    convolve_plugin = InstrumentConvolve(R=6000)
     conv_spectrum = convolve_plugin(my_spec)
     assert conv_spectrum.flux[999].value < 1.
     assert conv_spectrum.flux[1000].value > 0
