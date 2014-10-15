@@ -96,27 +96,40 @@ class IsochroneSpectrumLikelihood(SimpleSpectrumLikelihood):
         self.v = v
         self.bv = bv
         self.isochrone_interpolator = isochrone_interpolator
-        self.param_names = isochrone_parameter_names
+        self.parameter_names = isochrone_parameter_names
 
 
     def __call__(self, model_param, ndim, nparam):
         isochrone_values = self.isochrone_interpolator.interpolate_point(
             model_param[0], model_param[1], model_param[2])
 
-        model_v = isochrone_values.m_v + (5*np.log10(model_param[3]) - 5)
-        likelihood = -0.5 * ((model_v - self.v[0]) / self.v[1])**2
+        v_likelihood = self._calculate_v_log_likelihood(isochrone_values.m_v,
+                                                        model_param[3])
+        likelihood = v_likelihood
 
-        model_bv = isochrone_values.bv + model_param[4]
+        bv_likelihood = self._calculate_bv_log_likelihood(isochrone_values.bv,
+                                                          model_param[4])
 
-        likelihood += -0.5 ((model_bv - self.bv[0])/self.bv[1])
+        likelihood += bv_likelihood
 
         spectrum_param_dict = OrderedDict([('teff', isochrone_values.teff),
                                            ('logg', isochrone_values.logg),
                                            ('feh', model_param[1])])
 
-        m = self.observation(**spectrum_param_dict)
+        m = self.observation.evaluate(**spectrum_param_dict)
+        spec_likelihood = (-0.5 * ((self.spectrum.flux.value - m.flux.value) /
+        self.spectrum.uncertainty.value)**2).sum() / self.spectrum.flux.shape[0]
 
-        likelihood += (-0.5 * ((self.spectrum.flux.value - m.flux.value) /
-        self.spectrum.uncertainty.value)**2).sum()
+        likelihood += spec_likelihood
 
         return likelihood
+
+
+    def _calculate_v_log_likelihood(self, isochrone_m_v, distance):
+        model_v = isochrone_m_v + (5*np.log10(distance) - 5)
+        return -0.5 * ((model_v - self.v[0]) / self.v[1])**2
+
+    def _calculate_bv_log_likelihood(self, isochrone_bv, ebv):
+        model_bv = isochrone_bv + ebv
+        return -0.5 * ((model_bv - self.bv[0]) / self.bv[1])**2
+

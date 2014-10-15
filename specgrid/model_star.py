@@ -175,6 +175,8 @@ class Observation(SpecGridCompositeModel):
         return "Model Observation:\n\n{0}\n\n{1}".format(self.model_star, self.model_instrument)
 
     def evaluate(self, *args, **kwargs):
+        if len(args) > 0:
+            raise ValueError('currently not working with args')
         #### Split up **kwargs ###
         model_star_kwargs = {}
         model_instrument_kwargs = {}
