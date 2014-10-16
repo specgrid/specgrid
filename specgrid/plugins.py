@@ -280,12 +280,12 @@ class CCM89Extinction(object):
         from specutils import extinction
 
         extinction_factor = 10 ** (-0.4 * extinction.extinction_ccm89(
-            spectrum.wavelength, a_v=self.a_v, r_v=self.r_v))
+            spectrum.wavelength, a_v=self.a_v,
+            r_v=self.r_v).to(u.angstrom).value)
 
-        return Spectrum1D.from_array(
-            spectrum.wavelength.value,
-            extinction_factor * spectrum.flux,
-            dispersion_unit=spectrum.wavelength.unit, unit=spectrum.unit)
+
+        return Spectrum1D.from_array(spectrum.wavelength,
+                                     extinction_factor * spectrum.flux)
 
 
 
