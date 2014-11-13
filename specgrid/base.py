@@ -88,8 +88,12 @@ class SpectralGrid(object):
 
         with h5py.File(grid_hdf5_fname, 'r') as h5file:
             wavelength_unit = u.Unit(h5file['fluxes'].attrs['wavelength.unit'])
-            self.wavelength = h5file['fluxes'].attrs['wavelength'] * \
-                              wavelength_unit
+
+            if h5file['fluxes'].attrs['wavelength'] == 'wavelength':
+                self.wavelength = h5file['wavelength'] * wavelength_unit
+            else:
+                self.wavelength = h5file['fluxes'].attrs['wavelength'] * \
+                                  wavelength_unit
             self.flux_unit = u.Unit(h5file['fluxes'].attrs['flux.unit'])
             self.fluxes = np.array(h5file['fluxes'])
 
