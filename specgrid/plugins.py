@@ -271,6 +271,24 @@ class NormalizeParts(object):
 class CCM89Extinction(object):
     param_names = ['a_v', 'r_v']
 
+
+    @property
+    def a_v(self):
+        return self._a_v
+
+    @a_v.setter
+    def a_v(self, value):
+        self._a_v = np.abs(value)
+
+    @property
+    def r_v(self):
+        return self._r_v
+
+    @r_v.setter
+    def r_v(self, value):
+        self._r_v = np.abs(value)
+
+
     def __init__(self, a_v=0.0, r_v=3.1):
         self.a_v = a_v
         self.r_v = r_v

@@ -36,7 +36,7 @@ def test_simple_fit1(test_spectrum, test_model_star):
 @pytest.mark.xfail
 def test_simple_fit1(test_spectrum, test_model_star):
     fit_result = fit_spectrum(test_spectrum, test_model_star, teff=5600, logg=4.3,
-                            feh=0.2, fitter='Nelder-Mead')
+                            feh=0.2, method='Nelder-Mead')
     assert False, "finish nelder mead test"
 
 

@@ -175,19 +175,8 @@ class Observation(SpecGridCompositeModel):
         return "Model Observation:\n\n{0}\n\n{1}".format(self.model_star, self.model_instrument)
 
     def evaluate(self, *args, **kwargs):
-        #### Split up **kwargs ###
-        model_star_kwargs = {}
-        model_instrument_kwargs = {}
-
-        for key in kwargs:
-            if key in self.model_star.param2model:
-                model_star_kwargs[key] = kwargs[key]
-            elif key in self.model_instrument.param2model:
-                model_instrument_kwargs[key] = kwargs[key]
-            else:
-                raise ValueError('Parameter {0} not a valid parameter ({1})'.format(key, ','.join(self.param2model.keys())))
-
-        return self.model_instrument.evaluate(self.model_star.evaluate(**model_star_kwargs), **model_instrument_kwargs)
+        self._set_parameters(*args, **kwargs)
+        return self.model_instrument(self.model_star())
 
 def assemble_observation(spectral_grid, plugin_names=[], spectrum=None, normalize_npol=None, ):
     """
