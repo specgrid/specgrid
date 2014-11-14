@@ -15,7 +15,8 @@ if not _ASTROPY_SETUP_:
     from specgrid.fix_spectrum1d import Spectrum1D
     from specgrid.base import SpectralGrid
     from specgrid import plugins
-    from specgrid.model_star import ModelStar, assemble_observation
+    from specgrid.model_star import (ModelStar, ModelInstrument, Observation,
+                                     assemble_observation)
 
 
 import logging

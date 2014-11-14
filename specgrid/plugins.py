@@ -3,7 +3,7 @@ from collections import OrderedDict
 
 
 import scipy.ndimage as nd
-from scipy.ndimage.filters import gaussian_filter1d
+
 import numpy as np
 from numpy.polynomial import Polynomial
 
@@ -278,9 +278,11 @@ class CCM89Extinction(object):
     def __call__(self, spectrum):
 
         from specutils import extinction
-
-        extinction_factor = 10 ** (-0.4 * extinction.extinction_ccm89(
-            spectrum.wavelength, a_v=self.a_v,
+        extinction_factor = np.ones_like(spectrum.wavelength.value)
+        valid_wavelength = ((spectrum.wavelength > 910 * u.angstrom) &
+                            (spectrum.wavelength < 33333 * u.angstrom))
+        extinction_factor[valid_wavelength] = 10 ** (-0.4 * extinction.extinction_ccm89(
+            spectrum.wavelength[valid_wavelength], a_v=self.a_v,
             r_v=self.r_v).to(u.angstrom).value)
 
 
