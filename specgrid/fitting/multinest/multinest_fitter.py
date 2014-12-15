@@ -17,8 +17,9 @@ from specgrid.fitting import BaseFitResult
 
 try:
     import pymultinest
-except:
+except ImportError:
     multinest_available = False
+    raise
 else:
     multinest_available = True
 
@@ -29,9 +30,9 @@ class MultinestResult():
     def from_multinest_basename(cls, basename, parameter_names):
         """
         Reading a MultiNest result from a basename
-        Parameter
-        ---------
 
+        Parameters
+        ----------
 
         basename: str
             basename (path + prefix) for a multinest run
@@ -43,6 +44,26 @@ class MultinestResult():
         posterior_data = cls.read_posterior_data(basename, parameter_names)
 
         return cls(posterior_data)
+
+    @classmethod
+    def from_hdf5(cls, h5_fname, key):
+        """
+        Reading a Multinest result from its generated HDF5 file
+
+        Parameters
+        ----------
+
+        h5_fname: ~str
+            HDF5 filename
+
+        key: ~str
+            group identifier in the store
+        """
+
+        posterior_data = pd.read_hdf(h5_fname, key)
+
+        return cls(posterior_data)
+
 
     @staticmethod
     def read_posterior_data(basename, parameter_names):

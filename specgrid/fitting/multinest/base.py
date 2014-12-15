@@ -71,7 +71,7 @@ def fit_spectro_photometry_multinest(spectrum, magnitude_set, observation, prior
     prior_collection = PriorCollection(priors_list)
 
     multinest_fitter = BaseMultinestFitter(likelihood, prior_collection)
-    #multinest_fitter.run()
+    multinest_fitter.run()
     return multinest_fitter
 
 
