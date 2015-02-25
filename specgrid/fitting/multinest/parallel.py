@@ -27,12 +27,16 @@ def set_engines_cpu_affinity():
 
 
 @interactive
-def parallel_simple_spectrum_multinest(spectrum, spectrum_label, model_instrument, priors):
+def parallel_simple_spectrum_multinest(spectrum, spectrum_label,
+                                       model_instrument, priors,
+                                       data_path=None):
     import os
     import pymultinest
     from specgrid.model_star import Observation
     from specgrid.fitting.multinest.base import fit_simple_spectrum_multinest
     fname = '{0}_simple.h5'.format(spectrum_label)
+    if data_path is not None:
+        fname = os.path.join(data_path, fname)
     if os.path.exists(fname):
         return True
     model_observation = Observation(model_star, model_instrument)
@@ -40,6 +44,28 @@ def parallel_simple_spectrum_multinest(spectrum, spectrum_label, model_instrumen
                                            priors)
 
     mn_fit.result.posterior_data.to_hdf(fname, 'multinest', mode='w')
+    return True
+
+@interactive
+def parallel_spectro_photometry_multinest(spectrum, spectrum_label, model_instrument, priors,  magnitude_set_dill, data_path=None):
+    import os
+    import pymultinest
+    import dill
+    from specgrid.model_star import Observation
+    from specgrid.fitting.multinest.base import fit_spectro_photometry_multinest
+    fname = '{0}_spectro_photom.h5'.format(spectrum_label)
+    magnitude_set = dill.loads(magnitude_set_dill)
+    if data_path is not None:
+        fname = os.path.join(data_path, fname)
+    if os.path.exists(fname):
+        return True
+    model_observation = Observation(model_star, model_instrument)
+
+    mn_fit = fit_spectro_photometry_multinest(spectrum, magnitude_set,
+                                              model_observation, priors)
+
+    mn_fit.result.posterior_data.to_hdf(fname, 'multinest', mode='w')
+    return True
 
 
 class ParallelMultiNestFitter(object):
@@ -86,21 +112,7 @@ class ParallelMultiNestFitter(object):
         for client in clients:
             client.apply(set_engines_cpu_affinity)
 
-    def queue_spectra(self, spectra, spectra_label, priors, **kwargs):
-
-        for spectrum, spectrum_label in zip(spectra, spectra_label):
-            model_instrument = deepcopy(self.model_instrument)
-            for model in model_instrument:
-                if model.__class__.__name__ == 'NormalizeParts':
-                    model.update_observed_spectrum(spectrum, kwargs.pop('parts'))
-                elif hasattr(model, 'update_observed_spectrum'):
-                    model.update_observed_spectrum(spectrum)
-                else:
-                    continue
-
-            self.lbv.apply(self.fitness_function, spectrum, spectrum_label, model_instrument, **kwargs)
-
-    def queue_spectrum(self, spectrum, spectrum_label, priors, **kwargs):
+    def queue_spectrum(self, spectrum, spectrum_label, priors, data_path=None, **kwargs):
             model_instrument = deepcopy(self.model_instrument)
             for model in model_instrument.models:
                 if model.__class__.__name__ == 'NormalizeParts':
@@ -109,6 +121,5 @@ class ParallelMultiNestFitter(object):
                     model._update_observed_spectrum(spectrum)
                 else:
                     continue
-            return self.lbv.apply(self.fitness_function, spectrum, spectrum_label,
-                           model_instrument, priors)
+            return self.lbv.apply(self.fitness_function, spectrum, spectrum_label, model_instrument, priors, data_path=data_path, **kwargs)
 

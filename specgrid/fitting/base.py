@@ -11,13 +11,17 @@ class SimpleFitResult(BaseFitResult):
     """
     Simple fit result object
 
-    :param fit_parameter_names:
-    :param best_fit_values:
-    :param best_fit_spectrum:
-    :param spectrum:
-    :param model:
-    :param full_output:
-    :return:
+    Parameters
+    ----------
+
+    fit_parameter_names: ~list of ~str
+    best_fit_values: ~list of ~float or ~Quantity
+    best_fit_spectrum: ~Spectrum1D
+    spectrum: ~Spectrum1D
+        fitted spectrum
+    model: ~Observation
+    full_output: dict
+
     """
 
     def __init__(self, best_fit_values, parameter_guesses, best_fit_spectrum,
@@ -122,6 +126,18 @@ class SimpleLeastsqFitResult(SimpleFitResult):
         return repr_str
 
 class SimpleSpectrumFitnessFunction(object):
+    """
+    Simple Spectrum Fitness function which should be used in all fitting
+    operations
+
+    Parameters
+    ----------
+
+    spectrum: ~Spectrum1D
+        the observed spectrum to be fit
+
+
+    """
     def __init__(self, spectrum, model_observation, fill_value = 1e99):
         self.spectrum = spectrum
         self.model_observation = model_observation
@@ -160,7 +176,7 @@ class SimpleSpectrumFitnessFunction(object):
         quality = ((self.spectrum.flux - model_flux) / uncertainty)
 
 
-        return quality if return_square_sum else (quality**2).sum()
+        return (quality**2).sum() if return_square_sum else quality
 
 
 
@@ -204,7 +220,7 @@ def fit_spectrum(spectrum, model_observation, method='leastsq',
                          'of the grid -- aborting'.format(parameter_guesses))
 
     fitness_func = SimpleSpectrumFitnessFunction(spectrum, model_observation,
-                                                 fill_value=fill_value)
+                                                 fill_value=fill_value).fitness_function
 
     return_square_sum = not (method == 'leastsq')
     if method == 'leastsq':
