@@ -121,8 +121,52 @@ class SimpleLeastsqFitResult(SimpleFitResult):
                 self.parameter_guesses[parameter_name])
         return repr_str
 
+class SimpleSpectrumFitnessFunction(object):
+    def __init__(self, spectrum, model_observation, fill_value = 1e99):
+        self.spectrum = spectrum
+        self.model_observation = model_observation
+        self.fill_value = fill_value
+        
 
-def fit_spectrum(spectrum, model_spectrum, fitter='leastsq',
+    def _get_spectrum_uncertainty(self):
+        if getattr(self.spectrum, 'uncertainty', None) is not None:
+            return self.spectrum.uncertainty
+        else:
+            return np.ones_like(self.spectrum.flux)
+
+    def _get_model_flux(self, param_values, param_names):
+        parameter_dict = OrderedDict(zip(param_names, param_values))
+
+        model_spectrum = self.model_observation.evaluate(**parameter_dict)
+
+        return self._replace_nan_flux(model_spectrum)
+
+    def _replace_nan_flux(self, model_spectrum):
+        if np.isnan(model_spectrum.flux[0]):
+            model_flux = np.ones_like(model_spectrum.flux) * self.fill_value
+        else:
+            model_flux = model_spectrum.flux
+
+        return model_flux
+
+    def fitness_function(self, param_values, param_names, return_square_sum):
+
+        model_flux = self._get_model_flux(param_values, param_names)
+
+        uncertainty = self._get_spectrum_uncertainty()
+
+
+
+        quality = ((self.spectrum.flux - model_flux) / uncertainty)
+
+
+        return quality if return_square_sum else (quality**2).sum()
+
+
+
+
+
+def fit_spectrum(spectrum, model_observation, method='leastsq',
                  fill_value=1e99, valid_slice=slice(None), **guesses):
     """
     Parameters
@@ -130,10 +174,10 @@ def fit_spectrum(spectrum, model_spectrum, fitter='leastsq',
 
     spectrum: ~specutils.Spectrum1D
         spectrum to be fit
-    model_spectrum: ~specgrid.ModelObservation
+    model_observation: ~specgrid.ModelObservation
         model of observation, that returns a spectrum
-    fitter: str
-        fitter name one of the scipy minimize options or leastsq
+    method: str
+        method name one of the scipy minimize options or leastsq
     fill_value: ~float
     valid_slice: ~slice
         slice for valid data
@@ -145,55 +189,47 @@ def fit_spectrum(spectrum, model_spectrum, fitter='leastsq',
                          'for the param_names that should be fit. '
                          'e.g. fit_spectrum(spec, mstar, teff=5000, logg=4)')
 
-    if not set(guesses.keys()).issubset(set(model_spectrum.param_names)):
+    if not set(guesses.keys()).issubset(set(model_observation.param_names)):
         raise ValueError('Some parameter guesses are not param_names'
                          ' in the current model star ({0})'.format(
-            ', '.join(set(guesses.keys()) - set(model_spectrum.param_names))))
+            ', '.join(set(guesses.keys()) - set(model_observation.param_names))))
 
 
     parameter_guesses = OrderedDict((key, guesses[key])
-                                  for key in model_spectrum.param_names
+                                  for key in model_observation.param_names
                                   if key in guesses)
 
-    if np.isnan(model_spectrum.evaluate(**parameter_guesses).flux.value[0]):
+    if np.isnan(model_observation.evaluate(**parameter_guesses).flux.value[0]):
         raise ValueError('Initial guess ({0}) is outside the confines '
                          'of the grid -- aborting'.format(parameter_guesses))
-    def spectral_model_fit(parameter_values):
 
-        parameter_dict = {key:value for key, value in zip(
-            parameter_guesses.keys(), parameter_values)}
-        model = model_spectrum.evaluate(**parameter_dict)
+    fitness_func = SimpleSpectrumFitnessFunction(spectrum, model_observation,
+                                                 fill_value=fill_value)
 
-        if getattr(spectrum, 'uncertainty', None) is not None:
-            uncertainty = spectrum.uncertainty
-        else:
-            uncertainty = np.ones_like(spectrum.flux)
+    return_square_sum = not (method == 'leastsq')
+    if method == 'leastsq':
 
-        if np.isnan(model.flux[0]):
-            model_flux = np.ones_like(model.flux) * fill_value
-        else:
-            model_flux = model.flux
-
-        quality = ((spectrum.flux - model_flux) / uncertainty)[valid_slice]
-        return quality if fitter == 'leastsq' else (quality**2).sum()
-
-    if fitter == 'leastsq':
-
-        fit = optimize.leastsq(spectral_model_fit,
+        fit = optimize.leastsq(fitness_func,
                                np.array(parameter_guesses.values()),
+                               args=(parameter_guesses.keys(),
+                                     return_square_sum),
                                full_output=True)
-        bestfit_spectrum = model_spectrum()
+
+        bestfit_spectrum = model_observation()
 
         result = SimpleLeastsqFitResult(fit[0], fit[1], parameter_guesses, bestfit_spectrum,
-                                 spectrum, model_spectrum, fit)
+                                 spectrum, model_observation, fit)
         return result
     else:
-        fit = optimize.minimize(spectral_model_fit,
-                                np.array(parameter_guesses.values()),
-                                method=fitter)
-        best_fit_spectrum = model_spectrum()
+        fit = optimize.minimize(fitness_func,
+                               np.array(parameter_guesses.values()),
+                               args=(parameter_guesses.keys(),
+                                     return_square_sum))
+
+        best_fit_spectrum = model_observation()
 
         result = SimpleFitResult(fit.x, parameter_guesses, best_fit_spectrum,
-                                 spectrum, model_spectrum, fit, fit.success)
+                                 spectrum, model_observation, fit, fit.success)
 
     return result
+

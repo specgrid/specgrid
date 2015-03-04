@@ -2,6 +2,7 @@ from collections import OrderedDict
 from logging import getLogger
 #likelihood = SimpleLikelihood(self.spectrum, observation, self.parameter_names)
 
+from specgrid.fitting.spectrophotometry import SpectroPhotometryFitnessFunction
 logger = getLogger(__name__)
 
 class SimpleSpectrumLikelihood(object):
@@ -82,3 +83,22 @@ class SimpleSpectrumLikelihood(object):
 
         return repr_str.format('\n'.join(self.parameter_names),
                                '\n'.join(fixed_parameter_str))
+
+
+class SpectroPhotometryLikelihood(SimpleSpectrumLikelihood):
+    def __init__(self, spectrum, magnitude_set, observation, parameter_names):
+        super(SpectroPhotometryLikelihood, self).__init__(spectrum,
+                                                          observation,
+                                                          parameter_names)
+        self.magnitude_set = magnitude_set
+        self.fitness_function = SpectroPhotometryFitnessFunction(spectrum,
+                                                                 observation,
+                                                                 magnitude_set)
+
+    def __call__(self, model_param, ndim, nparam):
+        # returns the likelihood of observing the data given the model param_names
+
+        chi2 = self.fitness_function.fitness_function(model_param,
+                                               self.parameter_names, True)
+
+        return -0.5 * chi2
