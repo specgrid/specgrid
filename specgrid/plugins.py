@@ -148,10 +148,14 @@ class Interpolate(object):
     param_names = []
 
     def __init__(self, observed):
-        self.observed = observed
+        self._update_observed_spectrum(observed)
+
+    def _update_observed_spectrum(self, observed_spectrum):
+        self.observed = observed_spectrum
 
     def __call__(self, spectrum):
-        wavelength, flux = spectrum.wavelength.value, spectrum.flux
+        wavelength, flux = spectrum.wavelength.to(
+            self.observed.wavelength.unit).value, spectrum.flux
         interpolated_flux = np.interp(self.observed.wavelength.value,
                                       wavelength, flux)
         return Spectrum1D.from_array(
@@ -175,6 +179,10 @@ class Normalize(object):
     param_names = []
 
     def __init__(self, observed, npol):
+        self.npol = npol
+        self._update_observed_spectrum(observed)
+
+    def _update_observed_spectrum(self, observed):
         if getattr(observed, 'uncertainty', None) is None:
             self.uncertainty = 1. * observed.flux.unit
         else:
@@ -185,10 +193,11 @@ class Normalize(object):
         self._rcond = (len(observed.flux) *
                        np.finfo(observed.flux.dtype).eps)
         self._Vp = np.polynomial.polynomial.polyvander(
-            observed.wavelength/observed.wavelength.mean() - 1., npol)
+            observed.wavelength/observed.wavelength.mean() - 1., self.npol)
         self.domain = u.Quantity([observed.wavelength.min(),
                                   observed.wavelength.max()])
         self.window = self.domain/observed.wavelength.mean() - 1.
+
 
     def __call__(self, spectrum):
         # V[:,0]=mfi/e, Vp[:,1]=mfi/e*w, .., Vp[:,npol]=mfi/e*w**npol
@@ -234,18 +243,26 @@ class NormalizeParts(object):
     param_names = []
 
     def __init__(self, observed, parts, npol):
+        self.npol = npol
+
+        self._update_observed_spectrum(observed, parts)
+
+    def _update_observed_spectrum(self, observed_spectrum, parts):
         self.parts = parts
         self.normalizers = []
         try:
-            if len(parts) != len(npol):
+            if len(parts) != len(self.npol):
                 raise ValueError("List of parts should match in length to "
                                  "list of degrees")
         except TypeError:  # npol is single number
-            npol = [npol]*len(parts)
+            npol = [self.npol]*len(parts)
+        else:
+            npol = self.npol
 
         for part, _npol in zip(parts, npol):
             self.normalizers.append(
-                Normalize(self.spectrum_1d_getitem(observed, part), _npol))
+                Normalize(self.spectrum_1d_getitem(observed_spectrum, part), _npol))
+
 
     @staticmethod
     def spectrum_1d_getitem(observed, part):
@@ -308,46 +325,6 @@ class CCM89Extinction(object):
                                      extinction_factor * spectrum.flux)
 
 
-
-def observe(model, wgrid, slit, seeing, overresolve, offset=0.):
-    """Convolve a model with a seeing profile, truncated by a slit, & pixelate
-
-    Parameters
-    ----------
-    model: Table (or dict-like)
-       Holding wavelengths and fluxes in columns 'w', 'flux'
-    wgrid: array
-       Wavelength grid to interpolate model on
-    slit: float
-       Size of the slit in wavelength units
-    seeing: float
-       FWHM of the seeing disk in wavelength units
-    overresolve: int
-       Factor by which detector pixels are overresolved in the wavelength grid
-    offset: float, optional
-       Offset of the star in the slit in wavelength units (default 0.)
-
-    Returns
-    -------
-    Convolved model: Table
-       Holding wavelength grid and interpolated, convolved fluxes
-       in columns 'w', 'flux'
-    """
-    # make filter
-    wgridres = np.min(np.abs(np.diff(wgrid)))
-    filthalfsize = np.round(slit/2./wgridres)
-    filtgrid = np.arange(-filthalfsize,filthalfsize+1)*wgridres
-    # sigma ~ seeing-fwhm/sqrt(8*ln(2.))
-    filtsig = seeing/np.sqrt(8.*np.log(2.))
-    filt = np.exp(-0.5*((filtgrid-offset)/filtsig)**2)
-    filt /= filt.sum()
-    # convolve with pixel width
-    filtextra = int((overresolve-1)/2+0.5)
-    filt = np.hstack((np.zeros(filtextra), filt, np.zeros(filtextra)))
-    filt = nd.convolve1d(filt, np.ones(overresolve)/overresolve)
-    mint = np.interp(wgrid, model['w'], model['flux'])
-    mconv = nd.convolve1d(mint, filt)
-    return Table([wgrid, mconv], names=('w','flux'), meta={'filt': filt})
 
 
 astrophysics_plugins = OrderedDict([('rotation', RotationalBroadening),
